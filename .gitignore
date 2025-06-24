@@ -16,6 +16,11 @@ solve.smt2
 target/
 Cargo.lock
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
 # bap_test
 bap_test/
 resources/bin/
