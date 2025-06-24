@@ -1,0 +1,252 @@
+use crate::lattices::reachingdefslattice::LocIdx;
+use crate::lattices::{Lattice, VarSlot};
+use std::cmp::Ordering;
+use std::collections::HashMap;
+use std::default::Default;
+
+//Currently implemented with hashmap, could also use a vector for a dense map
+#[derive(Eq, Clone, Debug)]
+pub struct StackLattice<T> {
+    pub offset: i64,
+    pub map: HashMap<i64, VarSlot<T>>,
+}
+
+impl<T: std::fmt::Debug + Clone> std::fmt::Display for StackLattice<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut tmp: Vec<(&i64, &VarSlot<T>)> = self.map.iter().collect();
+        let sorted = tmp.as_mut_slice();
+        sorted.sort_by(|a, b| b.0.cmp(&a.0));
+        write!(f, "{}: {:?}", self.offset, sorted)
+    }
+}
+
+impl<T: Lattice + Clone> StackLattice<T> {
+    pub fn update(&mut self, offset: i64, value: T, size: u32) -> () {
+        // println!("stack update: {:?} + {:?} = {:?} <- {:?} {:?}", self.offset, offset, self.offset + offset, value, size);
+        //Check if 4 aligned
+        if (offset & 3) != 0 {
+            panic!("Unsafe: Attempt to store value on the stack on not 4-byte aligned address.");
+        }
+        if size > 8 {
+            panic!("Store too large!");
+        }
+        //remove overlapping entries
+        //if write is size 8: remove next slot (offset + 4) if one exists
+        if size == 8 {
+            self.map.remove(&(self.offset + offset + 4));
+        }
+
+        // if next slot back (offset-4) is size 8, remove it
+        if let Some(x) = self.map.get(&(self.offset + offset - 4)) {
+            if x.size == 8 {
+                self.map.remove(&(self.offset + offset - 4));
+            }
+        }
+
+        //if value is default, just delete entry map.remove(offset)
+        if value == Default::default() {
+            self.map.remove(&(self.offset + offset));
+        } else {
+            self.map
+                .insert(self.offset + offset, VarSlot { size, value });
+        }
+    }
+
+    pub fn get(&self, offset: i64, size: u32) -> T {
+        if !(size == 4 || size == 8) {
+            panic!("Load wrong size! size = {:?}", size);
+        }
+
+        // TODO: is this correct?
+        match self.map.get(&(self.offset + offset)) {
+            Some(stack_slot) => {
+                if stack_slot.size == size {
+                    stack_slot.value.clone()
+                } else {
+                    Default::default()
+                }
+            }
+            None => Default::default(),
+        }
+    }
+
+    pub fn update_stack_offset(&mut self, adjustment: i64) -> () {
+        if (adjustment & 3) != 0 {
+            panic!("Unsafe: Attempt to make stack not 4-byte aligned.");
+        }
+        self.offset += adjustment;
+    }
+}
+
+//check if StackLattice s1 is less than StackLattice s2
+fn hashmap_le<T: PartialOrd>(s1: &StackLattice<T>, s2: &StackLattice<T>) -> bool {
+    for (k1, v1) in s1.map.iter() {
+        if !s2.map.contains_key(k1) {
+            return false;
+        } else {
+            if s2.map.get(k1).unwrap() < v1 {
+                return false;
+            } else {
+            }
+        }
+    }
+    true
+}
+
+impl<T: PartialOrd> PartialOrd for StackLattice<T> {
+    fn partial_cmp(&self, other: &StackLattice<T>) -> Option<Ordering> {
+        if self.offset != other.offset {
+            None
+        } else {
+            if hashmap_le(self, other) {
+                Some(Ordering::Less)
+            } else if hashmap_le(other, self) {
+                Some(Ordering::Greater)
+            } else if self == other {
+                Some(Ordering::Equal)
+            } else {
+                None
+            }
+        }
+    }
+}
+
+impl<T: PartialEq> PartialEq for StackLattice<T> {
+    fn eq(&self, other: &StackLattice<T>) -> bool {
+        (self.map == other.map) && (self.offset == other.offset)
+    }
+}
+
+//assumes that stack offset is equal in both stack lattices
+impl<T: Lattice + Clone> Lattice for StackLattice<T> {
+    fn meet(&self, other: &Self, loc_idx: &LocIdx) -> Self {
+        let mut newmap: HashMap<i64, VarSlot<T>> = HashMap::new();
+        for (k, v1) in self.map.iter() {
+            match other.map.get(k) {
+                Some(v2) => {
+                    if v1.size == v2.size {
+                        let new_v = v1.value.meet(&v2.value.clone(), loc_idx);
+                        if new_v != Default::default() {
+                            let newslot = VarSlot {
+                                size: v1.size,
+                                value: new_v,
+                            };
+                            newmap.insert(*k, newslot);
+                        }
+                    }
+                }
+                None => (),
+            }
+        }
+
+        if self.offset != other.offset {
+            panic!(
+                "stack offsets misaligned 0x{:x?}: {:?} {:?}",
+                loc_idx.addr, self.offset, other.offset
+            );
+        }
+
+        StackLattice {
+            offset: self.offset,
+            map: newmap,
+        }
+    }
+}
+
+impl<T: Default> Default for StackLattice<T> {
+    fn default() -> Self {
+        StackLattice {
+            offset: 0,
+            map: HashMap::new(),
+        }
+    }
+}
+
+#[test]
+fn stack_lattice_test_eq() {
+    use crate::lattices::BooleanLattice;
+    let mut x1: StackLattice<BooleanLattice> = Default::default();
+    let mut x2: StackLattice<BooleanLattice> = Default::default();
+    assert_eq!(x1 == x2, true);
+
+    //check equality with adjusted stack
+    x1.update_stack_offset(4);
+    x2.update_stack_offset(4);
+    assert_eq!(x1 == x2, true);
+
+    //check inequality of different stack adjustments
+    x1.update_stack_offset(4);
+    x2.update_stack_offset(8);
+    assert_eq!(x1 == x2, false);
+    x1.update_stack_offset(4);
+    assert_eq!(x1 == x2, true);
+
+    let y1 = BooleanLattice { v: false };
+    let y2 = BooleanLattice { v: false };
+    let y3 = BooleanLattice { v: true };
+
+    //check equality with entries added
+    x1.update(4, y1, 4);
+    //adding a false does nothing
+    assert_eq!(x1 == x2, true);
+
+    x2.update(4, y2, 4);
+    assert_eq!(x1 == x2, true);
+
+    //check that different sizes break equality
+    x1.update(20, y3, 4);
+    x2.update(20, y3, 8);
+    assert_eq!(x1 != x2, true);
+
+    assert_eq!(x1.get(20, 4) == y3, true);
+    // should be false if we access with wrong size
+    assert_eq!(x1.get(20, 8) == y3, false);
+    assert_eq!(x1.get(20, 8) == y1, true);
+
+    //empty entry should return default
+    assert_eq!(x1.get(64, 8) == y1, true);
+}
+
+#[test]
+fn stack_lattice_test_ord() {
+    use crate::lattices::BooleanLattice;
+    let mut x1: StackLattice<BooleanLattice> = Default::default();
+    let mut x2: StackLattice<BooleanLattice> = Default::default();
+    let y1 = BooleanLattice { v: true };
+    let y2 = BooleanLattice { v: true };
+
+    //check 1 entry vs 0
+    x1.update(4, y1, 4);
+    assert_eq!(x1 == x2, false);
+    assert_eq!(x1 > x2, true);
+    assert_eq!(x1 < x2, false);
+
+    //check 2 entry vs 1
+    x1.update(8, y2, 4);
+    x2.update(4, y1, 4);
+    assert_eq!(x1 == x2, false);
+    assert_eq!(x1 > x2, true);
+    assert_eq!(x1 < x2, false);
+
+    //check meet of 1 entry vs 2
+    assert_eq!(x1.meet(&x2, &LocIdx { addr: 0, idx: 0 }) == x2, true);
+}
+
+#[test]
+fn stack_lattice_test_overlapping_entries() {
+    use crate::lattices::BooleanLattice;
+    let mut x1: StackLattice<BooleanLattice> = Default::default();
+    let mut x2: StackLattice<BooleanLattice> = Default::default();
+    let y1 = BooleanLattice { v: true };
+    let y2 = BooleanLattice { v: true };
+    let y3 = BooleanLattice { v: true };
+
+    //overlapping entries
+    x1.update_stack_offset(16);
+    x2.update_stack_offset(16);
+    x1.update(0, y2, 8);
+    x1.update(4, y1, 4);
+    x2.update(4, y3, 4);
+    print!("{:?} {:?}", x1, x2);
+    assert_eq!(x1 == x2, true);
+}

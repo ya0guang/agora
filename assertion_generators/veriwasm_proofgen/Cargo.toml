@@ -1,0 +1,59 @@
+[package]
+name = "veriwasm"
+version = "0.1.4"
+authors = ["enjhnsn2 <e5johnso@eng.ucsd.edu>"]
+edition = "2018"
+license-file = "LICENSE"
+readme = "README.md"
+repository = "https://github.com/PLSysSec/veriwasm"
+description = "A safety verifier for native-compiled WebAssembly code"
+keywords = ["verification", "WebAssembly", "security", "static-analysis", "binary-analysis"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Commit `3c7a77993badea3f6c4573ecea58c263af74e213` is the current tip of `vw-tweaks-ii`
+#yaxpeax-core = { git = "https://github.com/iximeow/yaxpeax-core", rev = "3c7a77993badea3f6c4573ecea58c263af74e213" }
+yaxpeax-core = {version = "0.0.4-vw-tweaks"}
+yaxpeax-x86 = { version = "1.0.4", features = ["use-serde"] }
+yaxpeax-arch = { version = "0.2.4", features = ["use-serde"] }
+# iced-x86 = { package = "iced-asm", path = "../../iced-asm" }
+iced-asm = {version = "1.18.0", features = ["serde"], package = "iced-x86"}
+parser = { path = "../../parser" }
+ptir = { package = "ir", path = "../../ir" }
+"petgraph" = "0.4.13"
+# clap = "2.33.3"
+clap = { version = "3.2.22", features = ["derive"] }
+object = "0.31.0"
+byteorder = "1.3.4"
+colored = "2.0.0"
+serde_json = "1.0.59"
+log = "0.4.14"
+env_logger = "0.8.4"
+goblin = "0.4.1"
+itertools = "0.10.1"
+
+# This should be an optional compile target
+wasmtime = {version = "0.28.0", optional = true }
+#wasmtime = {path = "../wasmtime/crates/wasmtime"}
+#wasmtime-jit = { path = "../wasmtime/crates/jit"}
+#wasmtime-jit = "0.28.0"
+#lucet-module = { path = "./lucet_sandbox_compiler/lucet-module", version = "0.1.1", package="lucet-module-wasmsbx" }
+lucet-module = "0.5.1"
+
+
+#capstone = { version = "0.8.0" }
+
+
+# log = "*"
+# env_logger = "*"
+# goblin = "*"
+# wasmtime = { path = "../wasmtime/crates/wasmtime" }
+# wasmtime-jit = { path = "../wasmtime/crates/jit" }
+# lucet-module = { path = "../lucet_sandbox_compiler/lucet-module", version = "0.1.1", package="lucet-module-wasmsbx" }
+# # lucet-module = { git = "https://github.com/bytecodealliance/lucet.git" }
+elfkit = "0.0.4"
+
+[features]
+verify = ["wasmtime"] # feature for when we're integrating with wasmtime
+

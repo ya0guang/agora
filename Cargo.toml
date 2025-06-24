@@ -1,0 +1,14 @@
+[workspace]
+
+members = [
+    "ir",
+    "parser",
+    "checker",
+    "disasm",
+    "iced-asm",
+    "assertion_generators/veriwasm_proofgen",
+    "assertion_generators/lfence",
+]
+
+[patch.crates-io]
+yaxpeax-x86 = { git = "https://github.com/isolachine/yaxpeax-x86", rev = "7102443fcf4884d200a83741b8ecf3d54016e1b2"}

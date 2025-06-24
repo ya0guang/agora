@@ -1,0 +1,19 @@
+[package]
+name = "lfence"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+iced-x86 = {version = "1.18.0"}
+parser = { path = "../../parser" }
+ptir = { package = "ir", path = "../../ir" }
+clap = { version = "3.2.22", features = ["derive"] }
+# checker = { path = "../../checker" }
+object = "0.31.0"
+disasm =  {path = "../../disasm" }
+anyhow = "1.0"
+env_logger = "0.9"
+log = "0.4"
+lazy_static = "1.4.0"

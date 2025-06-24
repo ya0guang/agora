@@ -1,0 +1,67 @@
+// Proof Structure
+WHITESPACE = _{ " " }
+file = {SOI ~ (line ~ NEWLINE)* ~ EOI}
+line = { index ~ ": " ~ proof}
+proof = { assignment | relationship | hint | annotation }
+assignment = { boolean_location ~ ":=" ~ boolean_expr | bv_location ~ ":=" ~ bv_expr }
+relationship = { boolean_binary_expr | bv_relationship }
+hint = { "HINT" ~ policy ~ (relationship)? }
+annotation = { invariant | branch_cond }
+invariant = { "INV" ~ (relationship | expr) }
+branch_cond = { "BRANCH" ~ ( label | hex_num ) ~ (relationship)? }
+expr = { boolean_expr | bv_expr }
+boolean_expr = { boolean_location | boolean | boolean_unary_expr | boolean_binary_expr | bv_relationship }
+bv_relationship = { bv_binary_rel_op ~ bv_expr ~ bv_expr }
+boolean_binary_expr = { boolean_binary_op ~ boolean_expr ~ boolean_expr }
+boolean_unary_expr = { boolean_unary_op ~ boolean_expr }
+bv_binary_expr = { bv_binary_arith_op ~ bv_expr ~ bv_expr }
+bv_unary_expr = { bv_unary_op ~ bv_expr }
+bv_expr = { bv_location | hex_num | bv_const_expr | bv_unary_expr | bv_binary_expr | ite_expr }
+ite_expr = { "ITE" ~ boolean_expr ~ bv_expr ~ bv_expr }
+location = { boolean_location | bv_location }
+boolean_location = { flags | microarch_states }
+bv_location = { register | memory }
+index = { hex_num }
+label = @{ "." ~ (ASCII_ALPHANUMERIC)+ }
+
+// Operands and Constants
+hex_digits = { (ASCII_HEX_DIGIT)+ }
+hex_num = @{ "0x" ~ hex_digits }
+boolean = { "true" | "false" }
+// any = { "ANY" } any is not allowed to appear in the proof!
+bv_const_expr = { "GlobalBase" | "StackBase" | "HeapBase" | "RIPConst" | "LucetTablesBase" | "TableSize" | "TableIdx" | "GuestTableBase" | "FnPtr" | "UncheckedTableOffset" | "TableOffset" | "FnType_" ~ hex_num | "TypedTableOffset" | "JmpIdx_" ~ hex_digits | "JmpOffset_" ~ hex_digits | "JmpTarget_" ~ hex_digits }
+bitness = { (ASCII_DIGIT){2} }
+
+// Operators
+unary_op = { boolean_unary_op | bv_unary_op }
+binary_op = { boolean_binary_op | bv_binary_arith_op }
+// Unary Operators
+boolean_binary_op = { "or" | "and" | "xor" | "=" | "=>" | "distinct" }
+boolean_unary_op = { "not" }
+// Binary Operators
+zero_extend_op = { "(zero_extend" ~ bitness ~ ")" }
+extract_op = { "(extract" ~ bitness ~ "0)" }
+bv_unary_op = { "bvneg" | "bvnot" | zero_extend_op | extract_op }
+// binary_op = { "+" | "-" | "*" | "/" | "%" | "&" | "|" | "^" | "<<" | ">>" | binary_rel }
+bv_binary_arith_op = { "bvadd" | "bvsub" | "bvmul" | "bvudiv" | "bvurem" | "bvand" | "bvor" | "bvxor" | "bvshl" | "bvlshr" }
+bv_binary_rel_op = { "bvule" | "bvult" | "bvuge" | "bvugt" | "=" | "distinct" }
+// TODO: signed relationships
+
+// Detailed Locations
+flags = { "CF" | "PF" | "AF" | "ZF" | "SF" | "TF" | "IF" | "DF" | "OF" }
+microarch_states = { "LoadBuffer" }
+register = { register8 | register32 | register16 | register64 | register128 }
+memory = { size_prefix ~ "[" ~ (register64)? ~ (memory_pm)? ~ (indscale)? ~ (memory_pm)? ~ (hex_num)? ~ "]" }
+size_prefix = { "b" | "w" | "d" | "q" }
+memory_pm = {"+" | "-"}
+indscale = { "(" ~ register64 ~ "*" ~ scale ~ ")" }
+scale = { "1" | "2" | "4" | "8" }
+reg_indices = { '2'..'9' | "10" | "11" | "12" | "13" | "14" | "15" | "0" | "1" }
+// register512 = { "zmm0" | "zmm1" | "zmm2" | "zmm3" | "zmm4" | "zmm5" | "zmm6" | "zmm7" | "zmm8" | "zmm9" | "zmm10" | "zmm11" | "zmm12" | "zmm13" | "zmm14" | "zmm15" }
+// register256 = { "ymm0" | "ymm1" | "ymm2" | "ymm3" | "ymm4" | "ymm5" | "ymm6" | "ymm7" | "ymm8" | "ymm9" | "ymm10" | "ymm11" | "ymm12" | "ymm13" | "ymm14" | "ymm15" }
+register128 = { "xmm" ~ reg_indices }
+register64 = { "rax" | "rbx" | "rcx" | "rdx" | "rsi" | "rdi" | "rbp" | "rsp" | "r8" | "r9" | "r10" | "r11" | "r12" | "r13" | "r14" | "r15" | "rip" }
+register32 = { "eax" | "ebx" | "ecx" | "edx" | "esi" | "edi" | "ebp" | "esp" | "r8d" | "r9d" | "r10d" | "r11d" | "r12d" | "r13d" | "r14d" | "r15d" }
+register16 = { "ax" | "bx" | "cx" | "dx" | "si" | "di" | "bp" | "sp" | "r8w" | "r9w" | "r10w" | "r11w" | "r12w" | "r13w" | "r14w" | "r15w" }
+register8 = { "al" | "bl" | "cl" | "dl" | "sil" | "dil" | "bpl" | "spl" | "r8l" | "r9l" | "r10l" | "r11l" | "r12l" | "r13l" | "r14l" | "r15l" }
+policy = { "GlobalBaseLookup" | "RipFuncPtr" | "FuncPtrCalc" | "HeapRead" | "HeapWrite" | "StackWrite" | "StackRead" | "MetaAccess" | "BpRead" | "BpWrite" | "JumpTableAccess" | "GlobalRead" | "GlobalWrite" | "RIPConst" | "JmpPtrCalc" }
