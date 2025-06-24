@@ -4,7 +4,7 @@ import os
 from solcx import install_solc, set_solc_version, get_solcx_install_folder
 
 
-DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(__file__), '../config.json')
+DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(__file__), '../config')
 CONFIG_PATH = os.environ.get('CONFIG_PATH', DEFAULT_CONFIG_PATH)
 
 DEFAULT_SOURCE_PATH = os.path.join(os.path.dirname(__file__), '../../contract.sol')

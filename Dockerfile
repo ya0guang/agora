@@ -5,7 +5,7 @@ FROM rust:latest
 
 # Install Git to clone your repository.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git cvc4 python3-pip python3-venv && \
+    apt-get install -y --no-install-recommends git cvc4 python3-pip python3-venv curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Create a virtual environment for Python
@@ -13,7 +13,7 @@ RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Blockchain dependencies
-RUN python3 -m pip install seaborn scipy matplotlib
+RUN python3 -m pip install argparse requests web3 py-solc-x seaborn scipy matplotlib
 
 # Set the working directory inside the container. This is where your code will live.
 WORKDIR /agora

@@ -20,7 +20,7 @@ docker run -it --rm agora
 # Test the Agora Verifier ()
 ./test_one.sh
 # Test the smart contract
-???
+python3 ./test_smart_contract.py
 ```
 
 ## Step-by-Step Guide
