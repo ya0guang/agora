@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 binaries=(
-    resources/spec2006/astar_O0
+    resources/spec2006/libquantum_O3
 )
 
 for binary in ${binaries[@]}
