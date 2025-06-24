@@ -8,7 +8,7 @@ from web3 import Web3
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
-CONFIG = os.path.join(BASE, "config.json")
+CONFIG = os.path.join(BASE, "config")
 NAME = "BugBountyPlatform"
 
 source_path = os.environ.get("CONTRACT_SOURCE", "../contract.sol")

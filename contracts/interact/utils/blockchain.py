@@ -35,6 +35,11 @@ def publish_task(private_key, contract_addr, file_hash, file_name, constraints):
     abi = contract['abi']
 
     contract = w3.eth.contract(address=contract_addr, abi=abi)
+    # check if the bug bounty task already exists
+    bounty_info = contract.functions.bugBounties(file_hash).call()
+    if bounty_info[0]:
+        print("Task with hash {} already exists.".format(file_hash.hex()))
+        return None
     # get function
     func = contract.functions.publishTask(file_hash, file_name, constraints)
     # get address and nonce
@@ -68,6 +73,11 @@ def verify_bug(private_key, contract_addr, hash):
     abi = contract['abi']
     
     contract = w3.eth.contract(address=contract_addr, abi=abi)
+    # check if the bug bounty task exists
+    bounty_info = contract.functions.bugBounties(hash).call()
+    if not bounty_info[0]:
+        print("Task with hash {} does not exist.".format(hash.hex()))
+        return None
     # get function
     func = contract.functions.verifyBug(hash)
     # get address and nonce

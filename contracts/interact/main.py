@@ -41,10 +41,12 @@ def main(args):
         claim_address()
     elif args.command == 'publish':
         receipt = publish_task_util(args.contract_address, args.hash, args.name, args.constraints)
-        print_receipt(receipt)
+        if receipt is not None:
+            print_receipt(receipt)
     elif args.command == 'verify':
         receipt = verify_bug_util(args.contract_address, args.hash)
-        print_receipt(receipt)
+        if receipt is not None:
+            print_receipt(receipt)
     elif args.command == 'confirm':
         claim_bug(args.hash, args.address)
     else:

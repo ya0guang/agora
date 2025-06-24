@@ -1,0 +1,13 @@
+{
+    "provider": "https://sepolia.infura.io/v3/df06acebf3db497aa87c4d9ffb0ee6d9",
+    "privateKey": "0xedca3fff6cc2b935d0d2d103c9a474a28c659c77428681db7cf2c730582f58be",
+    "ProofCheckers": [
+        "0x23D70f3950985E9A89A10cbf164F9274B99351bB"
+    ],
+    "BugVerifiers": [
+        "0x23D70f3950985E9A89A10cbf164F9274B99351bB"
+    ],
+    "V3QuoteVerifier": "0x6E64769A13617f528a2135692484B681Ee1a7169",
+    "V4QuoteVerifier": "0x90c14Bd25744d8b1E3971951BD56BfFf24dC053A",
+    "BugVerifier_MRENCLAVE": "0xc114f13545abbc355fd75f6d2d929f01384a52cc0c6ce2606723589af6b249d9"
+}
