@@ -6,7 +6,7 @@ members = [
     "checker",
     "disasm",
     "iced-asm",
-    "assertion_generators/veriwasm_proofgen",
+    "assertion_generators/wasm_sfi",
     "assertion_generators/lfence",
 ]
 

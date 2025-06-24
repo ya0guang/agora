@@ -36,7 +36,7 @@ def gen_proof(basepath: pathlib.Path, binary: pathlib.Path, proof: pathlib.Path,
     print(f'[*] Generating proof for [{binary}]...')
     touch('log.prf')
     veriwasm = basepath / 'target/debug/veriwasm'
-    postprocess = basepath / 'assertion_generators/postprocess.py'
+    postprocess = basepath / 'assertion_generators/wasm_sfi/postprocess.py'
     # ret = os.system(f'{veriwasm} --disable-call-checks -i {binary} &> {log}')
     if log is not None:
         log_file = open(log, 'w')
