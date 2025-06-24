@@ -10,7 +10,6 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use iced_asm::{Register, UsedMemory};
-use log::{error, warn};
 use std::collections::HashSet;
 use std::convert::{From, TryFrom};
 use std::default;
@@ -733,7 +732,6 @@ impl TryFrom<UsedMemory> for MemCell {
     type Error = ConversionError;
     fn try_from(value: UsedMemory) -> Result<Self, Self::Error> {
         if value.memory_size().is_packed() {
-            error!("Packed memory size not supported");
             return Err(ConversionError::UsedMemory2MemCell(value));
         }
         let mem = MemCellBuilder::new()
@@ -970,9 +968,7 @@ impl From<u128> for Imm {
 
 impl From<u64> for Imm {
     fn from(v: u64) -> Self {
-        if v > i64::MAX as u64 {
-            warn!("Negative Imm: {}", v);
-        }
+        if v > i64::MAX as u64 {}
         Imm {
             value: v as _,
             size: ValSize::default(),

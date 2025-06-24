@@ -8,8 +8,6 @@ use anyhow::Result;
 use iced_asm::{InstructionInfoFactory, Mnemonic, OpAccess};
 use ir::*;
 use lazy_static::lazy_static;
-use log::debug;
-use log::trace;
 use std::collections::{BTreeMap, HashSet};
 
 // These instructions don't need to be fenced after
@@ -35,7 +33,7 @@ impl LfenceAfterLoad {
 }
 
 // fn _lfence_const(addr: u64) -> Const {
-//     Const::new(Sort::Bool, format!("lfence_0x{:x}", addr))
+//     Const::new(Sort::Bool, format!("clfence_0x{:x}", addr))
 // }
 
 impl Matcher for LfenceAfterLoad {
@@ -56,7 +54,6 @@ impl Matcher for LfenceAfterLoad {
 
         for (addr, ins) in dis {
             if next_should_fence {
-                trace!("checking lfence at 0x{:x}", addr);
                 let ins_cons = constraints.get_mut(addr).unwrap();
                 ins_cons.assertions.push((
                     expr!(
@@ -87,7 +84,6 @@ impl Matcher for LfenceAfterLoad {
                     }
                 })
             {
-                debug!("lfence needed after load @ 0x{:x}", addr);
                 next_should_fence = true;
                 continue;
             }

@@ -3,7 +3,6 @@ use checker::dis::{disasm_binary, resolve_text_symbols};
 use checker::policy::{BinaryType, Policy, Verifier};
 use checker::utils::run_func;
 use clap::Parser;
-use log::{debug, warn};
 use parser::*;
 use std::collections::{BTreeSet, HashMap};
 use std::fs;
@@ -63,7 +62,6 @@ fn main() {
 }
 
 fn run_funcions(mut args: Args) -> Result<()> {
-    debug!("Reading input binary file: {:?}", &args.input_bin);
     let binary = fs::read(&args.input_bin)?;
     let mut sym_rawdata = resolve_text_symbols(&binary)?;
 
@@ -96,12 +94,6 @@ fn run_funcions(mut args: Args) -> Result<()> {
 
     // filter out avoid functions
     args.avoid_functions.push("lucet_probestack".to_string());
-    for func_name in args.avoid_functions {
-        if !focused_functions.remove(&func_name) {
-            warn!("avoided function {} not found", func_name)
-        }
-    }
-
     // print the list of focused functions
     println!(
         "{} focused functions\n-----------------",

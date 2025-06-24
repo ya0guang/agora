@@ -3,7 +3,6 @@ use iced_asm::{
     Decoder, DecoderOptions, FlowControl, Instruction, Mnemonic, OpKind, SymbolResolver,
     SymbolResult,
 };
-use log::{debug, error, trace, warn};
 use object::{Object, ObjectSection, ObjectSymbol, SectionKind, SymbolKind};
 use petgraph::graphmap::GraphMap;
 use petgraph::Directed;
@@ -84,10 +83,6 @@ pub fn build_cfg(
                 // If next instruction is in another bb, add an edge
                 let next_addr = addr + ins.len() as u64;
                 if let Some(_next_bb) = bbs.get(&next_addr) {
-                    debug!(
-                        "sequential control flow bridges different bbs at 0x{:x} to 0x{:x}",
-                        addr, next_addr
-                    );
                     let current_bb_key = find_site_bb(&bbs, *addr)?;
                     cfg.add_edge(current_bb_key, next_addr, ());
                 }
@@ -105,10 +100,6 @@ pub fn build_cfg(
             FlowControl::IndirectBranch => {
                 let current_bb_key = find_site_bb(&bbs, *addr)?;
                 let table_size = get_indirect_jump_tablesize(dis.range(..addr + 1));
-                debug!(
-                    "Indirect control flow detected at {:x}, table size: {}",
-                    addr, table_size
-                );
                 let table_start_offset = ins.next_ip() - first_addr;
                 let offsets = get_offsets(
                     &raw[table_start_offset as usize
@@ -125,12 +116,10 @@ pub fn build_cfg(
             | FlowControl::Interrupt => {}
         }
     }
-    warn!("CFG: {:#x?}", cfg);
     Ok(cfg)
 }
 
 pub fn build_bbs(raw: &[u8], dis: &Disassembled) -> Result<BTreeMap<u64, BasicBlock>> {
-    debug!("Analyzing function cfg");
     // (block start address -> BasicBlock)
     let mut bbs = BTreeMap::new();
     let first_addr = dis.first_key_value().unwrap().0;
@@ -148,16 +137,8 @@ pub fn build_bbs(raw: &[u8], dis: &Disassembled) -> Result<BTreeMap<u64, BasicBl
     };
 
     bbs.insert(original_bb.start, original_bb);
-    trace!("Beginning of analysis: Basic blocks: {:x?}", bbs);
 
     for (addr, ins) in dis {
-        trace!(
-            "Analyzing instruction: {:?} @ 0x{:x}, {:?}, mnemonic: {:?}",
-            ins,
-            addr,
-            ins.flow_control(),
-            ins.mnemonic()
-        );
         match ins.flow_control() {
             // Block continues
             FlowControl::Next | FlowControl::Call => {}
@@ -171,28 +152,21 @@ pub fn build_bbs(raw: &[u8], dis: &Disassembled) -> Result<BTreeMap<u64, BasicBl
                     dis.get(&target_prev).unwrap().len() as u64,
                 )?;
             }
-            FlowControl::IndirectCall => {
-                warn!("Indirect control flow detected at {:x}", addr)
-            }
+            FlowControl::IndirectCall => {}
             FlowControl::IndirectBranch => {
                 // including addr itself in range
                 let table_size = get_indirect_jump_tablesize(dis.range(..addr + 1));
-                debug!(
-                    "Indirect control flow detected at {:x}, table size: {}",
-                    addr, table_size
-                );
+
                 let table_start_offset = ins.next_ip() - first_addr;
                 let offsets = get_offsets(
                     &raw[table_start_offset as usize
                         ..(table_start_offset + table_size * 4) as usize],
                 );
-                warn!("offsets: {:?}", offsets);
                 // add a dummy BB for the switch table
                 split(&mut bbs, ins.next_ip() + (table_size - 1) * 4, 4)?;
                 for offset in offsets {
                     let target = u64::try_from(ins.next_ip() as i64 + offset as i64)?;
                     let target_prev = *dis.range(..target).last().unwrap().0;
-                    warn!("target address: {:x}", target);
                     split(
                         &mut bbs,
                         target_prev,
@@ -201,7 +175,7 @@ pub fn build_bbs(raw: &[u8], dis: &Disassembled) -> Result<BTreeMap<u64, BasicBl
                 }
             }
             FlowControl::XbeginXabortXend | FlowControl::Interrupt => {
-                error!("Unexpected control flow at {:x}, {:x?}", addr, ins);
+                log::error!("Unexpected control flow at {:x}, {:x?}", addr, ins);
             }
             // ud2 is considered exception, and usually presented after return
             // Block ends when seeing these instructions
@@ -210,7 +184,6 @@ pub fn build_bbs(raw: &[u8], dis: &Disassembled) -> Result<BTreeMap<u64, BasicBl
             }
         }
     }
-    warn!("Basic blocks: {:x?}", bbs);
     Ok(bbs)
 }
 
@@ -230,13 +203,8 @@ fn split(bbs: &mut BTreeMap<u64, BasicBlock>, site: u64, site_ins_length: u64) -
     match bbs.get_mut(&bb_key_to_split) {
         Some(prev_bb) => {
             if site == prev_bb.end {
-                debug!("really no need to split @ 0x{:x}", site);
                 return Ok(site);
             }
-            debug!(
-                "Splitting block: 0x{:x?} at 0x{:x} with length {}",
-                bb_key_to_split, site, site_ins_length
-            );
             let new_bb = BasicBlock {
                 start: site + site_ins_length,
                 end: prev_bb.end,
@@ -245,7 +213,6 @@ fn split(bbs: &mut BTreeMap<u64, BasicBlock>, site: u64, site_ins_length: u64) -
             assert!(new_bb.end >= new_bb.start);
             prev_bb.end = site;
             bbs.insert(new_bb.start, new_bb);
-            debug!("Splitting done, blocks: {:x?}", bbs);
             return Ok(result);
         }
         None => {
@@ -341,7 +308,6 @@ where
         );
         last_eight[7].1.immediate(1)
     };
-    debug!("table_size: {}", table_size);
     assert!(table_size > 0, "Table size should be greater than 0");
     return table_size;
 }
@@ -432,7 +398,6 @@ pub fn disasm_binary(path: &Path) -> Result<HashMap<String, Disassembled>> {
             // TODO: rectify symbol sizes, current size is not accurate!
             continue;
         }
-        trace!("Disassembling symbol: {:?} @ {:#x}", sym.name(), sym_addr);
         let sym_bin = sym_section.data_range(sym_addr, sym_size)?.unwrap();
 
         disassmbled.insert(
@@ -445,7 +410,6 @@ pub fn disasm_binary(path: &Path) -> Result<HashMap<String, Disassembled>> {
 }
 
 pub fn disasm_block(data: &[u8], initial_ip: u64) -> Disassembled {
-    debug!("Disassembling function @ {:#x}", initial_ip);
     let mut result = BTreeMap::new();
     let mut pos = initial_ip;
     for i in disasm_code(data, Some(initial_ip)) {
@@ -453,13 +417,8 @@ pub fn disasm_block(data: &[u8], initial_ip: u64) -> Disassembled {
         pos += i.len() as u64;
         match i.flow_control() {
             FlowControl::IndirectBranch => {
-                warn!("Indirect branch at {:#x}", pos);
                 let table_size = get_indirect_jump_tablesize(result.iter()) as usize;
                 let table_start_ip = i.next_ip();
-                debug!(
-                    "Indirect JMP table size: {}, table starts at {:x}",
-                    table_size, table_start_ip
-                );
                 let skipped_ip = (table_size * 4) as u64 + pos;
                 result.extend(disasm_block(
                     &data[(skipped_ip - initial_ip) as usize..],
@@ -501,7 +460,6 @@ pub fn get_offsets(data: &[u8]) -> BTreeSet<i32> {
         let offset = i32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
         result.insert(offset);
     }
-    debug!("Offsets: {:?}", result);
     result
 }
 
@@ -611,7 +569,6 @@ mod dis_test {
         let sym_map = resolve_text_symbols(&bin).unwrap();
         let focused_function = "cos_259";
         let sym_info = sym_map.get(focused_function).unwrap();
-        debug!("addr: {}, size: {}", sym_info.addr, sym_info.size);
         let dis = disasm_block(&sym_info.data, sym_info.addr);
         for (addr, ins) in dis {
             let mut output = String::new();

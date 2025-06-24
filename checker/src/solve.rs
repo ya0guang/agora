@@ -1,7 +1,3 @@
-use ir::smt::{StringifyExpr, StringifySort, StringifySym};
-use rsmt2::print::{Sort2Smt, Sym2Smt};
-use rsmt2::{SmtConf, Solver};
-// use log::{debug, error, info, trace, warn};
 use crate::dis::ControlFlowInfo;
 use crate::policy::{Constraints, HintAssertWithInfo, Verifier};
 use crate::ssa::*;
@@ -9,9 +5,11 @@ use crate::validate::AssertWithInfo;
 use anyhow::{anyhow, Ok, Result};
 use core::hash::Hash;
 use iced_asm::Register;
+use ir::smt::{StringifyExpr, StringifySort, StringifySym};
 use ir::*;
 use lazy_static::lazy_static;
-use log::debug;
+use rsmt2::print::{Sort2Smt, Sym2Smt};
+use rsmt2::{SmtConf, Solver};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
@@ -122,7 +120,6 @@ where
 
 macro_rules! debug_write {
     ($output: expr, $($arg:tt)*) => {
-        debug!( $($arg)* );
         writeln!($output, $($arg)*).unwrap();
     };
 }
@@ -149,8 +146,6 @@ impl<'a> SolverContext<'a>
             asserted_aliases: HashSet::new(),
             verifier,
         };
-        #[cfg(feature = "global")]
-        ctx.declare(init_ssa).unwrap();
 
         // // Declaring GlobalBase
         // ctx.solver
@@ -161,25 +156,6 @@ impl<'a> SolverContext<'a>
         ctx
     }
 
-    #[cfg(feature = "global")]
-    pub fn declare(&mut self, frame: &SSAState) -> Result<()> {
-        for (loc, sub) in &frame.map {
-            self.do_declare(&Sub::from(loc.clone(), *sub))?;
-        }
-        // declare the stack
-        for (offset, (size, sub)) in &frame.stack {
-            let stack = Sub::from(
-                SSALocation::Stack(Stack {
-                    offset: *offset,
-                    size: *size,
-                }),
-                *sub,
-            );
-            self.do_declare(&stack)?;
-        }
-        Ok(())
-    }
-
     pub fn assert_aliases(&mut self, ssa: &SSAState) -> Result<()> {
         ssa.aliases.iter().try_for_each(|(loc, alias)| {
             // avid repeated assertion
@@ -187,7 +163,6 @@ impl<'a> SolverContext<'a>
                 return Ok(());
             } else {
                 self.do_declare(loc)?;
-                #[cfg(not(feature = "stack_func"))]
                 self.do_declare(alias)?;
                 let assertion = expr!(
                     loc.clone().into(),
@@ -225,35 +200,6 @@ impl<'a> SolverContext<'a>
 
                     // ITE br_cond (= current = corresponding incoming) true
                     self.do_declare(&Sub::from(loc.clone(), *incoming_sub))?;
-                    let br_assumption = SSExpr::Ite(
-                        Box::new(Const::new(Sort::Bool, br_cond).into()),
-                        Box::new(expr!(
-                            current_loc.into(),
-                            eq,
-                            Sub::from(loc.clone(), *incoming_sub).into()
-                        )),
-                        Box::new(SSEXPR_TRUE.clone()),
-                    );
-                    self.assume(&br_assumption)?;
-                }
-            }
-            #[cfg(feature = "global")]
-            if incoming_locs.len() > 1 {
-                self.debug_info(&format!(
-                    "declaring phi for location {:?} at address {:x}",
-                    loc, addr
-                ))?;
-                self.do_declare(&current_loc)?;
-                // let mut incoming_addrs = vec![];
-                for (incoming_addr, incoming_sub) in info.incoming_map.iter() {
-                    let br_cond = self.declare_branch_cond(*incoming_addr, addr)?;
-                    // incoming_addrs.push(br_cond.clone());
-                    let eq = match loc.get_sort() {
-                        Sort::Bool => boolean!("="),
-                        Sort::BitVec(_) => bv!("="),
-                    };
-
-                    // ITE br_cond (= current = corresponding incoming) true
                     let br_assumption = SSExpr::Ite(
                         Box::new(Const::new(Sort::Bool, br_cond).into()),
                         Box::new(expr!(
@@ -413,7 +359,6 @@ impl<'a> SolverContext<'a>
         if preconditions.is_empty() {
             return Ok(true);
         }
-        debug!("checking hints in `verify_preconditions`");
         for (asserts, assumption) in preconditions {
             if asserts.is_empty() {
                 continue;
@@ -439,21 +384,7 @@ impl<'a> SolverContext<'a>
         branch_conds: &Vec<SSExpr>,
     ) -> Result<bool> {
         // Unify and check in the future
-        #[cfg(not(debug_assertions))]
-        {
-            self.debug_info(&"unifying checked assertions".to_string())?;
-            let all_asserts: Vec<_> = assertions
-                .iter()
-                .map(|(assert, info)| {
-                    self.debug_info(&info).unwrap();
-                    assert.clone()
-                })
-                .collect();
-            let unified_assertion = unify_ssexprs(&all_asserts, boolean!("and"));
-            Ok(self.sandboxed_check(&unified_assertion, true, branch_conds)?)
-        }
 
-        #[cfg(debug_assertions)]
         // for debug purpose, we check each assertion separately
         Ok(assertions
             .iter()
@@ -537,32 +468,10 @@ impl<'a> SolverContext<'a>
             solverless!(solverless, solver.set_option(o, v).unwrap());
         }
         if let Some(ref mut w) = logger {
-            #[cfg(not(feature = "stack_func"))]
             debug_write!(w, "(set-logic QF_BV)");
-            #[cfg(feature = "stack_func")]
-            debug_write!(w, "(set-logic QF_UFBV)");
-            #[cfg(feature = "stack_func")]
-            debug_write!(
-                w,
-                "(declare-fun stack ((_ BitVec 64) (_ BitVec 64)) (_ BitVec 64))"
-            );
         }
 
-        #[cfg(not(feature = "stack_func"))]
         solverless!(solverless, solver.set_logic(rsmt2::Logic::QF_BV).unwrap());
-        #[cfg(feature = "stack_func")]
-        solverless!(solverless, solver.set_logic(rsmt2::Logic::QF_UFBV).unwrap());
-        #[cfg(feature = "stack_func")]
-        solverless!(
-            solverless,
-            solver
-                .declare_fun(
-                    "stack",
-                    vec!["(_ BitVec 64)", "(_ BitVec 64)"],
-                    "(_ BitVec 64)"
-                )
-                .unwrap()
-        );
         solver
     }
 }
@@ -580,18 +489,6 @@ pub fn solve_function(
         SolverContext::init_solver_context(&ssa_sem.init_ssa, smt_log_file, verifier);
 
     // debug!("Init: is sat? {:?}", solver_ctx.solver.check_sat().unwrap());
-
-    // declare the variables and memory layouts
-    #[cfg(feature = "global")]
-    ssa_sem.ssa_map.iter().try_for_each(|(addr, ins_ssa)| {
-        // let layout = memory_layout(*addr, false);
-        // solver_ctx.do_declare_memory_func(&layout)?;
-        solver_ctx.debug_info(&format!(
-            "Declaring new variables from the SSA for addr {:x}",
-            addr
-        ))?;
-        solver_ctx.declare(&ins_ssa.ssa)
-    })?;
 
     #[cfg(not(feature = "global"))]
     func_constraints.iter().try_for_each(|(_, cons)| {
@@ -625,23 +522,6 @@ pub fn solve_function(
         // declare phis
         solver_ctx.debug_info(&format!("Declaring phi functions for bb at {:x}", addr))?;
         let bb_info = ssa_sem.bb_map.get(addr).unwrap();
-        #[cfg(feature = "global")]
-        {
-            let predecessors: Vec<SSExpr> = bb_info
-                .predecessors
-                .iter()
-                .map(|pred| {
-                    let sym = solver_ctx.declare_branch_cond(*pred, *addr).unwrap();
-                    Const::new(Sort::Bool, sym).into()
-                })
-                .collect();
-            let assertion = unify_ssexprs(&predecessors, boolean!("or"));
-            solver_ctx.debug_info(&format!(
-                "Asserting the branch conditions for bb at {:x}",
-                addr
-            ))?;
-            solver_ctx.assume(&assertion)?;
-        }
         #[cfg(not(feature = "global"))]
         {
             // more than 1 predecessors: only one is taken
@@ -711,8 +591,6 @@ pub fn solve_function(
     // println!("relationships assumed");
 
     // Resolve constraints
-    #[cfg(not(debug_assertions))]
-    let mut temp_assertions: Vec<GenericExpr<Sub<GenericLocation<Sub<Register>>>>> = vec![];
     for (addr, ins_cons) in func_constraints {
         solver_ctx.debug_info(&format!("Solver asserting on addr 0x{:x}", addr))?;
 
@@ -732,16 +610,6 @@ pub fn solve_function(
         if ins_cons.assertions.is_empty() {
             continue;
         } else {
-            #[cfg(not(debug_assertions))]
-            {
-                let ins_asserts: Vec<_> = ins_cons
-                    .assertions
-                    .iter()
-                    .map(|(assert, _)| assert.clone())
-                    .collect();
-                temp_assertions.push(unify_ssexprs(&ins_asserts, boolean!("and")));
-            }
-            #[cfg(debug_assertions)]
             if !solver_ctx.sandboxed_batch_check(&ins_cons.assertions, &vec![])? {
                 // early reject
                 return Err(anyhow!("assertion failed"));
@@ -751,44 +619,6 @@ pub fn solve_function(
     // println!("all constraints added to temp_assertions");
     // #[cfg(not(debug_assertions))]
     // println!("length of the assertions: {}", temp_assertions.len());
-    #[cfg(not(debug_assertions))]
-    {
-        let unified_all_asserts = unify_ssexprs(&temp_assertions, boolean!("and"));
-        if !solver_ctx.sandboxed_batch_check(
-            &vec![(unified_all_asserts, "all asserts".to_string())],
-            &vec![],
-        )? {
-            return Err(anyhow!("All assertion check: assertion failed"));
-        }
-    }
+
     Ok(())
-}
-
-#[cfg(test)]
-mod solve_test {
-    use super::*;
-    use ir::{Flags, GenericAssignment, GenericLocation};
-
-    #[test]
-    fn rsmt2_playground() {
-        let mut ssa = SSAState::new();
-        ssa.map.insert(GenericLocation::Flag(Flags::ZF), 1);
-        ssa.map.insert(Register::RAX.into(), 2);
-        ssa.map.insert(Register::RBX.into(), 3);
-        let assgns = GenericAssignment {
-            lhs: Sub::from(Register::RBX.into(), 3),
-            rhs: Sub::from(Register::RAX.into(), 2).into(),
-        };
-        let smt_log_file = File::create("solve.smt2").unwrap();
-        let verifier = Verifier::dummy();
-        let mut solver_ctx =
-            SolverContext::init_solver_context(&SSAState::new(), smt_log_file, &verifier);
-        #[cfg(feature = "global")]
-        solver_ctx.declare(&ssa).unwrap();
-        solver_ctx.assign(&vec![assgns]).unwrap();
-        let is_sat = solver_ctx.solver.check_sat();
-        print!("Is sat? {:?}", is_sat);
-        let model = solver_ctx.solver.get_model();
-        print!("Model: {:?}", model);
-    }
 }

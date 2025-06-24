@@ -2,7 +2,6 @@ use crate::traits::*;
 use crate::typer::*;
 use crate::*;
 use anyhow::{anyhow, Result};
-use log::warn;
 use rsmt2::print::{Expr2Smt, Sort2Smt, Sym2Smt};
 
 // Sorts
@@ -340,14 +339,12 @@ impl StringifyExpr for Imm {
             },
             Sort::BitVec(size) if size == 128 => {
                 if self.value > (u32::MAX as u64) {
-                    warn!("Imm value exceeds 128-bit range, might be a signed number");
                 }
                 Ok(format!("#x{:032x}", self.value as u128))
             }
             Sort::BitVec(size) if size == 64 => Ok(format!("#x{:016x}", self.value)),
             Sort::BitVec(size) if size == 32 => {
                 if self.value > (u32::MAX as u64) {
-                    warn!("Imm value exceeds 32-bit range, might be a signed number");
                 }
                 Ok(format!("#x{:08x}", self.value as u32))
             }

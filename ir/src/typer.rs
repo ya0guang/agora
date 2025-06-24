@@ -1,6 +1,5 @@
 use crate::{ast::*, traits::*, LocationSub};
 use anyhow::{anyhow, Result};
-use log::{debug, trace};
 use std::{cmp::max, fmt::Debug};
 
 // Sort
@@ -65,7 +64,6 @@ impl Sort {
 
     // TODO deal with signed/unsigned
     pub fn cast<T>(self, target: Sort) -> Result<Continuation<T>> {
-        trace!("Casting {:?} to {:?}", self, target);
         self.validate()?;
         target.validate()?;
         match (self, target) {
@@ -190,7 +188,6 @@ where
                     _ => Err(anyhow::anyhow!("ZExtend must be applied to bitvectors")),
                 },
                 BVUnaryOp::Extract(i) => {
-                    debug!("Extracting {} from {:?}", i, exp);
                     match exp.infer_sort()? {
                         // ((_ extract i j) (_ BitVec m) (_ BitVec n))
                         // - extraction of bits i down to j from a bitvector of size m to yield a
@@ -222,7 +219,6 @@ where
                     if *op == BVBinaryArith::Shl {
                         return Ok(e1.infer_sort()?);
                     }
-                    debug!("Arith {:?}", self);
                     check_sort_eq(e1.as_ref(), e2.as_ref())
                 }
                 BVBinaryOp::Relation(_) => match check_sort_eq(e1.as_ref(), e2.as_ref())? {

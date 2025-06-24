@@ -229,13 +229,6 @@ pub trait Matcher {
             | Mnemonic::Jbe
             | Mnemonic::Je
             | Mnemonic::Jne => {
-                log::warn!(
-                    "{:?}: targets: {:x}, {:x}",
-                    ins.mnemonic(),
-                    ins.next_ip(),
-                    ins.memory_displacement64()
-                );
-
                 let jump_cond = match ins.mnemonic() {
                     Mnemonic::Jae => expr_to_ssexpr(
                         &GenericExpr::Var(Location::Flag(Flags::CF)).negate(),

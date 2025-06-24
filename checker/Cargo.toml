@@ -6,14 +6,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["wasmsfi", "naive_memory"] # optimized
+default = ["wasmsfi"] # optimized
 wasmsfi = []
-naive_memory = []
+# naive_memory = []
 mem_unhint = [] # global opt only
 stack_func = ["ir/stack_func"] # if we use UFBV
-global = [] # mem hint only
+# global = [] # mem hint only
 pushback = []
-baseline = ["mem_unhint", "global", "default"] # baseline
+baseline = ["mem_unhint", "default"] # baseline
 
 
 [dependencies]

@@ -9,7 +9,6 @@ use anyhow::{anyhow, Result};
 use iced_asm::Mnemonic;
 use ir::*;
 use lazy_static::lazy_static;
-use log::{debug, info, trace, warn};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::vec;
 
@@ -80,11 +79,6 @@ impl Matcher for IndirectJumpSafe {
                     | Mnemonic::Jbe
                     | Mnemonic::Je
                     | Mnemonic::Jne => {
-                        trace!(
-                            "targets: {:x}, {:x}",
-                            ins.next_ip(),
-                            ins.memory_displacement64()
-                        );
                         let jump_cond: SSExpr = self.resolve_flags(ins, ins_ssa)?;
                         branch_cond_target_sources
                             .entry(ins.memory_displacement64())
@@ -105,7 +99,6 @@ impl Matcher for IndirectJumpSafe {
         let mut last_idx = Const::new(Sort::BitVec(64), format!("dummy"));
 
         for (addr, ins_ssa) in &ssa.ssa_map {
-            debug!("indirect jump matcher working on 0x{:x}", addr);
             let ins = dis.get(addr).unwrap();
             let ins_proof = proofs.get(addr).unwrap();
             let ins_cons = constraints.get_mut(addr).unwrap();
@@ -136,7 +129,6 @@ impl Matcher for IndirectJumpSafe {
                                         bv!("="),
                                         hint_rel.lhs.clone()
                                     );
-                                    debug!("dst_check: {:?}", dst_check.clone());
                                     hint_assertions.push((
                                         dst_check,
                                         format!(
@@ -147,12 +139,6 @@ impl Matcher for IndirectJumpSafe {
                                 }
                             }
 
-                            trace!(
-                                "At 0x{:x}, hint_rel right hand side: {:?}",
-                                addr,
-                                hint_rel.rhs
-                            );
-
                             match name {
                                 "JmpIdx" => {
                                     let bound = u64::from_str_radix(&number, 16)?;
@@ -161,7 +147,6 @@ impl Matcher for IndirectJumpSafe {
                                     }
 
                                     let bb_head = find_site_bb(&_cfi.basic_blocks, *addr)?;
-                                    warn!("bb_head: {:x?}", bb_head);
                                     let conds = branch_cond_target_sources.get(&bb_head).unwrap();
                                     for c in conds {
                                         ins_cons.branch_conditions.push(c.1.clone());
@@ -178,7 +163,6 @@ impl Matcher for IndirectJumpSafe {
                                     let jmp_idx =
                                         Const::new(Sort::BitVec(64), format!("JmpIdx_{:x}", addr));
                                     ins_cons.constants.insert(jmp_idx.clone());
-                                    debug!("check: {:?}", check.clone());
                                     ins_cons.prf_preconditions.push((
                                         check,
                                         (
@@ -215,7 +199,6 @@ impl Matcher for IndirectJumpSafe {
                                         bv!("bvadd"),
                                         GenericExpr::Imm(Imm::from(base))
                                     );
-                                    warn!("check_base: {:x?}", &real);
 
                                     let check = vec![(
                                         expr!(mov_addr, bv!("="), real),
@@ -249,7 +232,6 @@ impl Matcher for IndirectJumpSafe {
                                         bv!("bvadd"),
                                         Imm::from(base).into()
                                     );
-                                    warn!("check_base: {:x?}", &real);
                                     let check = vec![(
                                         expr!(hint_rel.lhs.clone(), bv!("="), real),
                                         "Checking JmpTarget hint".to_string(),
@@ -301,37 +283,6 @@ pub struct IndirectCallSafe {
     pub function_addresses: HashMap<String, u64>,
     pub function_pointer_addresses: HashSet<u64>,
 }
-
-// trait IndirectCallCheckState {
-// }
-
-// struct LucetTableBase {}
-// impl IndirectCallCheckState for LucetTableBase {}
-
-// struct TableSize {}
-// impl IndirectCallCheckState for TableSize {}
-
-// struct TableIndex {}
-// impl IndirectCallCheckState for TableIndex {}
-
-// struct GuestTableBase {}
-// impl IndirectCallCheckState for GuestTableBase {}
-
-// struct TableOffset {}
-// impl IndirectCallCheckState for TableOffset {}
-
-// struct FunctionType {}
-// impl IndirectCallCheckState for FunctionType {}
-
-// struct TypeCheckedOffset {}
-// impl IndirectCallCheckState for TypeCheckedOffset {}
-
-// struct FunctionPointer {}
-// impl IndirectCallCheckState for FunctionPointer {}
-
-// struct IndirectCallCheck<T: IndirectCallCheckState> {
-//     _state: T
-// }
 
 lazy_static! {
     static ref LUCET_BASE: Const = Const::new(Sort::BitVec(64), "LucetTablesBase".to_string());
@@ -402,21 +353,8 @@ impl Matcher for IndirectCallSafe {
             "table_size".to_string(),
         ));
 
-        // TODO [!!!URGENT!!!] Need an interface to get the function table.
-        // Using a dummy fn pointer as guard for now.
-        // let fnptr_dummy = Const::new(Sort::BitVec(64), format!("fnptr_dummy"));
-        // dummy_guard.constants.insert(fnptr_dummy.clone());
         let mut possible_fnptrs: HashSet<Const> = HashSet::new();
         let mut call_targets = vec![];
-        // let mut table_indices = vec![];
-        // let mut table_offsets = vec![];
-        // let mut typed_offsets = vec![];
-
-        debug!(
-            "self.function_pointer_addresses: {:x?}",
-            self.function_pointer_addresses
-        );
-        debug!("self.function_addresses: {:x?}", self.function_addresses);
 
         let mut branch_cond_target_sources: BTreeMap<u64, BTreeMap<u64, SSExpr>> = BTreeMap::new();
         for (addr, ins_ssa) in &ssa.ssa_map {
@@ -429,11 +367,6 @@ impl Matcher for IndirectCallSafe {
                     | Mnemonic::Jbe
                     | Mnemonic::Je
                     | Mnemonic::Jne => {
-                        // trace!(
-                        //     "targets: {:x}, {:x}",
-                        //     ins.next_ip(),
-                        //     ins.memory_displacement64()
-                        // );
                         let jump_cond: SSExpr = self.resolve_flags(ins, ins_ssa)?;
                         branch_cond_target_sources
                             .entry(ins.memory_displacement64())
@@ -581,7 +514,6 @@ impl Matcher for IndirectCallSafe {
                                 bv!("="),
                                 hint_rel.lhs.clone()
                             );
-                            debug!("dst_check: {:?}", dst_check.clone());
                             hint_assertions.push((
                                 dst_check,
                                 format!("destination check of FuncPtrCalc hint at 0x{:X}", addr),
@@ -636,7 +568,6 @@ impl Matcher for IndirectCallSafe {
                                         expr!(mov_addr.clone(), bv!("="), table_size_mem.clone());
                                     pres.push(src_check);
 
-                                    debug!("read loc: {:?}", ins_ssa.read_locations);
                                     let read_mem: HashSet<_> = ins_ssa
                                         .read_locations
                                         .iter()
@@ -669,231 +600,6 @@ impl Matcher for IndirectCallSafe {
                                         "TableSize hint checked".to_string(),
                                     ),
                                 ));
-                            // } else if ptr_calc_const
-                            //     == Const::new(Sort::BitVec(64), "TableIdx".to_string())
-                            // {
-                            //     let bb_head = find_site_bb(&_cfi.basic_blocks, *addr)?;
-                            //     let conds = branch_cond_target_sources.get(&bb_head).unwrap();
-                            //     for c in conds {
-                            //         ins_cons.branch_conditions.push(c.1.clone());
-                            //     }
-
-                            //     let rhs = ins_ssa
-                            //         .ss_asgns
-                            //         .iter()
-                            //         .next()
-                            //         .unwrap()
-                            //         .right_hand_side
-                            //         .clone();
-                            //     let ssa_dst = if let GenericExpr::Binary(op, reg, _) = rhs {
-                            //         if op == bv!("bvshl") {
-                            //             *reg
-                            //         } else {
-                            //             hint_rel.left_hand_side.clone()
-                            //         }
-                            //     } else {
-                            //         hint_rel.left_hand_side.clone()
-                            //     };
-                            //     let e = expr!(
-                            //         ssa_dst.clone(),
-                            //         bv!("bvult"),
-                            //         GenericExpr::Const(TABLE_SIZE.clone())
-                            //     );
-                            //     let check = vec![(e.clone(), "Checking TableIdx hint".to_string())];
-                            //     // let table_idx =
-                            //     //     Const::new(Sort::BitVec(64), format!("TableIdx_{:x}", addr));
-                            //     // ins_cons.constants.insert(table_idx.clone());
-                            //     ins_cons
-                            //         .prf_preconditions
-                            //         .push((check, (e, "TableIdx hint checked".to_string())));
-                            // table_indices.push(table_idx.clone());
-                            // } else if ptr_calc_const == GUEST_BASE.clone() {
-                            //     let guest_base_rel = expr!(
-                            //         hint_rel.left_hand_side.clone(),
-                            //         bv!("="),
-                            //         GenericExpr::Const(GUEST_BASE.clone())
-                            //     );
-                            //     debug!("sending rel into checker: {:?}", guest_base_rel.clone());
-                            //     ins_cons.prf_relationships.push(guest_base_rel);
-                            // } else if ptr_calc_const
-                            //     == Const::new(Sort::BitVec(64), "TableOffset".to_string())
-                            // {
-                            //     // debug!("TableOffset hint for {:?}: {:?}", ins, ins_ssa.ss_asgns);
-                            //     // Getting the source SSAReg
-                            //     let rhs = ins_ssa
-                            //         .ss_asgns
-                            //         .iter()
-                            //         .next()
-                            //         .unwrap()
-                            //         .right_hand_side
-                            //         .clone();
-                            //     if let GenericExpr::Binary(op, _, _) = rhs {
-                            //         if op == bv!("bvshl") {
-                            //             // let mut pres = vec![];
-                            //             // let bitand = expr!(
-                            //             //     hint_rel.left_hand_side.clone(),
-                            //             //     bv!("bvand"),
-                            //             //     SSExpr::Imm(Imm::new(0xF, ValSize::Size64))
-                            //             // );
-                            //             let mask_chk = expr!(
-                            //                 expr!(
-                            //                     hint_rel.left_hand_side.clone(),
-                            //                     bv!("bvand"),
-                            //                     SSExpr::Imm(Imm::new(0xF, ValSize::Size64))
-                            //                 ),
-                            //                 bv!("="),
-                            //                 SSExpr::Imm(Imm::new(0x0, ValSize::Size64))
-                            //             );
-
-                            //             let bounds_chk = expr!(
-                            //                 hint_rel.left_hand_side.clone(),
-                            //                 bv!("bvult"),
-                            //                 expr!(
-                            //                     GenericExpr::Const(TABLE_SIZE.clone()),
-                            //                     bv!("bvmul"),
-                            //                     GenericExpr::Imm(Imm::new(0x10, ValSize::Size64))
-                            //                 )
-                            //             );
-                            //             // pres.push(pre.clone());
-                            //             // for idx in &table_indices {
-                            //             //     let pre = expr!(
-                            //             //         *reg.clone(),
-                            //             //         bv!("="),
-                            //             //         GenericExpr::Const(idx.clone())
-                            //             //     );
-                            //             //     // debug!(
-                            //             //     //     "sending TableOffset into checker: {:?}",
-                            //             //     //     pre.clone()
-                            //             //     // );
-                            //             //     pres.push(pre);
-                            //             // }
-                            //             // let table_offset = Const::new(
-                            //             //     Sort::BitVec(64),
-                            //             //     format!("TableOffset_{:x}", addr),
-                            //             // );
-                            //             // ins_cons.constants.insert(table_offset.clone());
-
-                            //             // ins_cons.prf_preconditions.push((
-                            //             //     vec![(
-                            //             //         unify_ssexprs(&pres, boolean!("or")),
-                            //             //         "checking TableOffset hint".to_string(),
-                            //             //     )],
-                            //             //     (pre, "TableOffset hint checked".to_string()),
-                            //             // ));
-
-                            //             // ^^^^^
-
-                            //             ins_cons.prf_relationships.push(mask_chk);
-                            //             ins_cons.prf_relationships.push(bounds_chk);
-
-                            //             // table_offsets.push(table_offset.clone());
-                            //             // } else {
-                            //             //     panic!("Found wrong GenericAssignment");
-                            //         }
-                            //         // } else {
-                            //         //     panic!("Found wrong GenericAssignment");
-                            //     }
-                            // } else if ptr_calc_const
-                            //     == Const::new(Sort::BitVec(64), format!("FnType_0x{:x}", addr))
-                            // {
-                            //     ins_cons.constants.insert(ptr_calc_const.clone());
-                            //     let mov_addr = match &ins_ssa
-                            //         .ss_asgns
-                            //         .iter()
-                            //         .next()
-                            //         .unwrap()
-                            //         .right_hand_side
-                            //     {
-                            //         GenericExpr::Var(x) => {
-                            //             if let GenericLocation::Memory(m) = &x.loc {
-                            //                 m.take_address()?
-                            //             } else {
-                            //                 panic!("src of mov is not memory")
-                            //             }
-                            //         }
-                            //         _ => return Err(anyhow!("src of mov is not memory")),
-                            //     };
-                            //     let mut pres = vec![];
-                            //     for offset in &table_offsets {
-                            //         let pre = expr!(
-                            //             mov_addr.clone(),
-                            //             bv!("="),
-                            //             expr!(
-                            //                 GenericExpr::Const(GUEST_BASE.clone()),
-                            //                 bv!("bvadd"),
-                            //                 GenericExpr::Const(offset.clone())
-                            //             )
-                            //         );
-                            //         // debug!("sending TableOffset into checker: {:?}", pre.clone());
-                            //         pres.push(pre);
-                            //     }
-                            //     ins_cons.prf_preconditions.push((
-                            //         vec![(
-                            //             unify_ssexprs(&pres, boolean!("or")),
-                            //             "checking FnType hint".to_string(),
-                            //         )],
-                            //         (
-                            //             expr!(
-                            //                 hint_rel.left_hand_side.clone(),
-                            //                 bv!("="),
-                            //                 hint_rel.right_hand_side.clone()
-                            //             ),
-                            //             "FnType_0x hint checked".to_string(),
-                            //         ),
-                            //     ));
-                            // } else if ptr_calc_const == *TYPED_TABLE_OFFSET {
-                            //     let rhs = ins_ssa
-                            //         .ss_asgns
-                            //         .iter()
-                            //         .next()
-                            //         .unwrap()
-                            //         .right_hand_side
-                            //         .clone();
-                            //     let ssa_src: LocationSub = if let GenericExpr::Var(ssa_loc) = rhs {
-                            //         let loc = ssa_loc.get_loc();
-                            //         if let GenericLocation::Memory(mem) = loc {
-                            //             if *mem.index_reg.get_loc() != Register::None {
-                            //                 mem.index_reg.into()
-                            //             } else {
-                            //                 hint_rel.left_hand_side.strip_as_var()?
-                            //             }
-                            //         } else {
-                            //             panic!("Unseen TYPED_TABLE_OFFSET loc: {:?}", loc);
-                            //         }
-                            //     } else {
-                            //         panic!("Unseen TYPED_TABLE_OFFSET rhs: {:?}", rhs);
-                            //     };
-
-                            //     let mut pres = vec![];
-                            //     for offset in &table_offsets {
-                            //         let pre = expr!(
-                            //             GenericExpr::Var(ssa_src.clone()),
-                            //             bv!("="),
-                            //             GenericExpr::Const(offset.clone())
-                            //         );
-                            //         debug!("sending TableOffset into checker: {:?}", pre.clone());
-                            //         pres.push(pre);
-                            //     }
-                            //     let typed_offset = Const::new(
-                            //         Sort::BitVec(64),
-                            //         format!("TypedTableOffset_{:x}", addr),
-                            //     );
-                            //     ins_cons.constants.insert(typed_offset.clone());
-                            //     ins_cons.prf_preconditions.push((
-                            //         vec![(
-                            //             unify_ssexprs(&pres, boolean!("or")),
-                            //             "checking TypedTableOffset hint".to_string(),
-                            //         )],
-                            //         (
-                            //             expr!(
-                            //                 GenericExpr::Var(ssa_src.clone()),
-                            //                 bv!("="),
-                            //                 GenericExpr::Const(typed_offset.clone())
-                            //             ),
-                            //             "TypedTableOffset hint checked".to_string(),
-                            //         ),
-                            //     ));
-                            //     typed_offsets.push(typed_offset.clone());
                             } else if ptr_calc_const
                                 == Const::new(Sort::BitVec(64), format!("FnPtr"))
                             {
@@ -907,8 +613,6 @@ impl Matcher for IndirectCallSafe {
                                     }
                                     _ => return Err(anyhow!("src of mov is not memory")),
                                 };
-
-                                debug!("mov_addr: {:?}", mov_addr.clone());
 
                                 let lb_chk = expr!(
                                     mov_addr.clone(),
@@ -992,17 +696,10 @@ impl Matcher for IndirectCallSafe {
                                 ));
                                 ins_cons.constants.insert(fn_ptr.clone());
                                 possible_fnptrs.insert(fn_ptr.clone());
-                            } else if ptr_calc_const == *UNCHECKED_TABLE_OFFSET {
-                                // TODO may need to be handled in the future
-                                warn!("Unhandled ptr_calc_const {:?}", ptr_calc_const);
-                            } else {
-                                warn!("Unknown ptr_calc_const {:?}", ptr_calc_const);
                             }
                         }
                     }
-                    _ => {
-                        info!("Unknown hint category {}", policy_name);
-                    }
+                    _ => {}
                 };
             }
             ins_cons.assertions.append(&mut hint_assertions);
@@ -1170,48 +867,6 @@ impl MemAccessBounded {
         ));
         result
     }
-
-    #[cfg(feature = "mem_unhint")]
-    fn unhint_assertions(
-        &self,
-        dst_addr: &GenericExpr<LocationSub>,
-        addr: u64,
-        direction: Direction,
-    ) -> Vec<AssertWithInfo> {
-        let mut sfi_cons = vec![];
-        // global
-        sfi_cons.push(unify_ssexprs(
-            &self
-                .global_assertions(dst_addr, addr)
-                .iter()
-                .map(|a| a.0.clone())
-                .collect::<Vec<_>>(),
-            boolean!("and"),
-        ));
-        // heap
-        sfi_cons.push(unify_ssexprs(
-            &self
-                .heap_assertions(dst_addr, addr)
-                .iter()
-                .map(|a| a.0.clone())
-                .collect::<Vec<_>>(),
-            boolean!("and"),
-        ));
-        // stack
-        sfi_cons.push(unify_ssexprs(
-            &self
-                .stack_assertions(dst_addr, addr, direction)
-                .iter()
-                .map(|a| a.0.clone())
-                .collect::<Vec<_>>(),
-            boolean!("and"),
-        ));
-
-        vec![(
-            unify_ssexprs(&sfi_cons, boolean!("or")),
-            "unified SFI check".to_string(),
-        )]
-    }
 }
 
 #[derive(Debug, Eq, Hash, PartialEq)]
@@ -1322,7 +977,6 @@ impl Matcher for MemAccessBounded {
             .push((global_guard_lb, format!("global lower bound guard")));
 
         for (addr, ins_ssa) in &ssa.ssa_map {
-            debug!("mem_operation matcher working on 0x{:x}", addr);
             let ins = dis.get(addr).unwrap();
             let mut write_dests: Vec<_> = ins_ssa
                 .written_locations
@@ -1344,16 +998,12 @@ impl Matcher for MemAccessBounded {
                 _ => None,
             };
 
-            debug!("ssa_dst_addr: {:?}", ssa_mem_written_destination_addr);
-
             let ssa_mem_read_source_addr = match read_srcs.pop() {
                 Some(GenericLocation::Memory(x)) => Some(x.take_address()?),
                 _ => None,
             };
-            debug!("ssa_src_addr: {:?}", ssa_mem_read_source_addr);
 
             let ins_proof = proofs.get(addr).unwrap();
-            debug!("ins_proof: {:?}", ins_proof);
             let ins_cons = constraints.get_mut(addr).unwrap();
 
             // deal with hints and determine the access category
@@ -1407,30 +1057,6 @@ impl Matcher for MemAccessBounded {
                             _ => return Err(anyhow!("src of mov is not memory")),
                         };
 
-                        // let mov_src = location_operand(ins, 1)?;
-                        // let mov_addr = match mov_src {
-                        //     GenericLocation::Memory(_) => {
-                        //         if let GenericExpr::Var(x) =
-                        //             &ins_ssa.ss_asgns.iter().next().unwrap().right_hand_side
-                        //         {
-                        //             if let GenericLocation::Memory(m) = &x.loc {
-                        //                 error!("{:#?}", m.take_address()?);
-                        //                 m.take_address()?
-                        //             } else {
-                        //                 panic!("src of mov is not memory")
-                        //             }
-                        //         } else {
-                        //             return Err(anyhow!("incorrect right hand side of mov"));
-                        //         }
-                        //         // let address = m.take_address()?;
-                        //         // error!("addr[{:x}] address: {:#?}", addr, address);
-                        //         // error!("{:#?}", ins_ssa.ss_asgns);
-                        //         // error!("{:#?}", expr_to_ssexpr(&address, &ins_ssa.ssa)?);
-                        //         // expr_to_ssexpr(&address, &ins_ssa.ssa)?
-                        //     }
-                        //     _ => return Err(anyhow!("src of mov is not memory")),
-                        // };
-
                         let src_check = expr!(mov_addr, bv!("bvule"), self.global_base_mem.clone());
                         let mut hint_assertions = vec![];
                         hint_assertions.push((
@@ -1451,13 +1077,9 @@ impl Matcher for MemAccessBounded {
                         ));
                     }
                     "RIPConst" => {
-                        debug!("RIPConst is handled in indirect control flow policy");
                         access_categories.insert(MemAccess::RIPConst);
                     }
-                    _ => {
-                        warn!("Mem access not supported yet: {}", policy_name);
-                        // access_categories.insert(MemAccess::Unsupported);
-                    }
+                    _ => {}
                 };
             }
 
@@ -1477,7 +1099,6 @@ impl Matcher for MemAccessBounded {
 
             let access_category = access_categories.iter().next().unwrap();
 
-            #[cfg(not(feature = "mem_unhint"))]
             let mut assertions = match access_category {
                 // FIXME [!!!!!!IMPORTANT!!!!!!]
                 // TODO: Two things need to be addressed here:
@@ -1507,57 +1128,9 @@ impl Matcher for MemAccessBounded {
                     self.global_assertions(&ssa_mem_written_destination_addr.unwrap(), *addr)
                 }
                 MemAccess::MetaAccess | MemAccess::JumpTableAccess => {
-                    warn!("MetaAccess is not supported yet for 0x{:x}", addr);
                     continue;
                 }
-                MemAccess::RIPConst => continue, // handled in indirect control flow
-                                                 // MemAccess::Unsupported => {
-                                                 //     // error!("Unsupported memory access at 0x{:x}", addr);
-                                                 //     continue;
-                                                 // }
-            };
-
-            #[cfg(feature = "mem_unhint")]
-            let mut assertions = match access_category {
-                MemAccess::StackRead => self.unhint_assertions(
-                    &ssa_mem_read_source_addr.unwrap(),
-                    *addr,
-                    Direction::READ,
-                ),
-                MemAccess::StackWrite => self.unhint_assertions(
-                    &ssa_mem_written_destination_addr.unwrap(),
-                    *addr,
-                    Direction::WRITE,
-                ),
-                MemAccess::HeapRead => self.unhint_assertions(
-                    &ssa_mem_read_source_addr.unwrap(),
-                    *addr,
-                    Direction::READ,
-                ),
-                MemAccess::HeapWrite => self.unhint_assertions(
-                    &ssa_mem_written_destination_addr.unwrap(),
-                    *addr,
-                    Direction::WRITE,
-                ),
-                MemAccess::GlobalRead => self.unhint_assertions(
-                    &ssa_mem_read_source_addr.unwrap(),
-                    *addr,
-                    Direction::READ,
-                ),
-                MemAccess::GlobalWrite => self.unhint_assertions(
-                    &ssa_mem_written_destination_addr.unwrap(),
-                    *addr,
-                    Direction::WRITE,
-                ),
-                MemAccess::MetaAccess | MemAccess::JumpTableAccess => {
-                    warn!("MetaAccess is not supported yet for 0x{:x}", addr);
-                    continue;
-                }
-                MemAccess::RIPConst => continue, // handled in indirect control flow
-                                                 // MemAccess::Unsupported => {
-                                                 //     // error!("Unsupported memory access at 0x{:x}", addr);
-                                                 //     continue;
-                                                 // }
+                MemAccess::RIPConst => continue,
             };
 
             ins_cons.assertions.append(&mut assertions);

@@ -33,6 +33,18 @@ python3 ./test_smart_contract.py
   - install with `cargo install tokei`
 - `cvc4`, as a sample solver
 
-### Reproducing the Verification Results
+### Reproducing the TCB Size Report
 
-### Reproducing the Smart Contract Results
+Run `tokei` to count lines of code. These components correspond to the TCB size report in the paper (Table 1).
+
+```bash
+tokei
+```
+| Table 1 Items          | Counted Files                                       | LoC Sum                      |
+| ---------------------- | --------------------------------------------------- | ---------------------------- |
+| General Utilities      | `ir/`,  `checker/[semantics, ssa, dis, policy/mod]` | 1.8 + 0.5 + 0.7 + 0.4 + 0.24 |
+| Binary Verifier        | `checker/[validate, solve, main, ]`                 | 188 + 468 + 123              |
+| Policy: SFI-VeriWASM   | `checker/policy/wasmsfi`                            | 0.5                          |
+| Policy: LVI            | `checker/policy/lvi`                                | 0.5                          |
+| Policy: IFC-ConfVERIFY |                                                     |                              |
+| Policy: SFI-Deflection |                                                     |                              |

@@ -6,7 +6,6 @@ use crate::ssa::*;
 use crate::validate::*;
 use anyhow::Result;
 // use disasm::{disasm_binary, disasm_code};
-use log::trace;
 use std::collections::{BTreeMap, HashMap};
 
 // The `dis_*` functions are not inside the TCB and should be removed in release!
@@ -56,12 +55,10 @@ pub fn run_func(
     println!("Working on function {}", func_name);
     // 1. lift semantics in proof IR
     let lifted_sem = measure_time!(lift(dis.iter())?, &mut time_cost);
-    trace!("Lifted semantics: {:#?}", lifted_sem);
 
     // 2. CFG construction
     println!("CFG working on function {}", func_name);
     let cfi = measure_time!(cfg_analysis(raw, &dis)?, &mut time_cost);
-    trace!("CFG of the function {:#x?}", cfi);
 
     //3. Rewrite IR in SSA form
     println!("SSA working on function {}", func_name);

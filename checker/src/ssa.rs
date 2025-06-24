@@ -4,7 +4,6 @@ use crate::semantics::*;
 use anyhow::{anyhow, Result};
 use iced_asm::{Instruction, Mnemonic, Register};
 use ir::*;
-use log::{debug, trace, warn};
 use std::collections::{btree_map::Range, BTreeMap, HashMap, HashSet, VecDeque};
 use std::convert::Into;
 use std::ops::Bound::Included;
@@ -45,7 +44,6 @@ impl PhiInfo {
         match self.incoming_map.get_mut(&addr) {
             // pre-existed subscript, return directly since nothing changed
             Some(s) if *s == sub => {
-                warn!("Duplicate incoming phi subscript");
                 return self.current_sub;
             }
             // new subscript, need to update current subscript and the map
@@ -139,7 +137,6 @@ impl BBInterpretation {
             // reach fixpoint
             return false;
         }
-        debug!("Merging from bb 0x{:x}", incoming_addr);
         // Stack offset check
         if self.in_ssa.stack_offset != incoming_ssa.stack_offset {
             panic!("Stack offset is assumed equal for all incoming edges");
@@ -170,10 +167,7 @@ impl BBInterpretation {
                 // if there are only registers, this path should not be taken?
                 (Some(self_sub), None) => {
                     result.map.insert(l.clone(), self_sub.clone());
-                    warn!(
-                        "Missing incoming addr {:x} in at location {:?}",
-                        incoming_addr, l
-                    );
+
                 }
                 (None, Some(other_sub)) => {
                     let pi: PhiInfo = PhiInfo::new_from(*other_sub, incoming_addr);
@@ -363,18 +357,31 @@ impl SSAState {
     ) -> Result<()> {
         match a.lhs.get_loc() {
             GenericLocation::Register(r) if *r == Register::RSP => {
-                debug!(
-                    "Found stack pointer assignment {:?}, current stack_offset: {}",
-                    a, self.stack_offset
-                );
                 match &a.rhs {
                     // End of function
                     // TODO: check stack balanced!
-                    SSExpr::Var(v) if let GenericLocation::Register(r) = v.get_loc() && *r == Register::RBP => {Ok(())},
+                    SSExpr::Var(v)
+                        if let GenericLocation::Register(r) = v.get_loc()
+                            && *r == Register::RBP =>
+                    {
+                        Ok(())
+                    }
                     SSExpr::Binary(BinaryOp::BV(BVBinaryOp::Arith(bvaop)), e1, e2) => {
                         match (e1.as_ref(), e2.as_ref()) {
-                            (SSExpr::Var(Sub {loc: GenericLocation::Register(Register::RSP), sub: _}), SSExpr::Imm(i))
-                            | (SSExpr::Imm(i), SSExpr::Var(Sub {loc: GenericLocation::Register(Register::RSP), sub: _})) => {
+                            (
+                                SSExpr::Var(Sub {
+                                    loc: GenericLocation::Register(Register::RSP),
+                                    sub: _,
+                                }),
+                                SSExpr::Imm(i),
+                            )
+                            | (
+                                SSExpr::Imm(i),
+                                SSExpr::Var(Sub {
+                                    loc: GenericLocation::Register(Register::RSP),
+                                    sub: _,
+                                }),
+                            ) => {
                                 match bvaop {
                                     // Stack grows down (towards lower addresses)
                                     BVBinaryArith::Add => {
@@ -401,10 +408,6 @@ impl SSAState {
             }
             GenericLocation::Memory(m) if m.is_rsp_ralted() => {
                 let offset = self.get_stack_offset(&m)?;
-                debug!(
-                    "Found stack memory assignment {:?} at offset {}; current offset {}",
-                    a, offset, self.stack_offset
-                );
                 let sub: usize = adder.lock().unwrap().take_sub();
                 self.stack.insert(offset, (m.size, sub));
                 // TODO: update the subscripts when merge branches
@@ -605,7 +608,6 @@ pub fn ssa(
         log::debug!("Processing Block: 0x{:x} -> {:x?}", addr, succ_addrs);
         for succ_addr in succ_addrs {
             // visited by interpret_bb
-            warn!("Dealing the successor 0x{:x}", succ_addr);
             // Add enough pre-merging information
             let succ_bb = bb_ai_map.get_mut(&succ_addr).unwrap();
             succ_bb.predecessors.insert(addr);
@@ -622,10 +624,6 @@ pub fn ssa(
                     cfi.basic_blocks.get(&succ_addr).unwrap(),
                 )
             } else {
-                debug!(
-                    "At block 0x{:x}: first visit bb; adding to worklist",
-                    succ_addr
-                );
                 // debug!("At block 0x{:x}: new input {:?}", succ_addr, branch_state);
                 succ_bb_interp.merge(
                     &branch_state,
@@ -636,11 +634,6 @@ pub fn ssa(
                 );
                 true
             };
-            debug!(
-                "phi node at {:x} after merge: {:#?}",
-                succ_addr,
-                bb_ai_map.get(&succ_addr).unwrap().loc_phis
-            );
 
             if has_change && !worklist.contains(&succ_addr) {
                 worklist.push_back(succ_addr);
@@ -651,7 +644,6 @@ pub fn ssa(
     }
 
     let first_ai = ssa_map.get_mut(&first_ins_addr).unwrap();
-    debug!("First AI ins addr: {:x}", first_ins_addr);
     first_ai.ss_asgns.append(init_regs_assignments.as_mut());
 
     Ok(FuncSSA {
@@ -699,11 +691,9 @@ fn interpret_bb<'a>(
     for (addr, ins) in dis {
         match semantics_map.get(&addr) {
             Some(sem) => {
-                trace!("Interpreting 0x{:x}, semantics: {:?}", addr, sem);
                 let mut new_ai = if visited {
                     ssa_map.get(addr).unwrap().clone()
                 } else {
-                    debug!("stepping into address 0x{:x}", addr);
                     step(
                         &last_ssa,
                         ins,
@@ -733,7 +723,6 @@ fn interpret_bb<'a>(
             }
         }
         // last_ssa = ssa_map.get(addr).unwrap().ssa;
-        trace!("State after 0x{:x}: {:?}", addr, last_ssa);
         // debug!("Assignments: {:?}", assignments);
         // debug!("Relationships: {:?}", relationships);
     }
@@ -791,7 +780,6 @@ fn step(
     // TODO: enforce the sequence of proofs
     // Deal with assignments first
     for a in air {
-        trace!("Stepping Assignment: {:?}", a);
         // if let Location::Flag(_) = a.left_hand_side {
         //     continue
         // }
@@ -820,7 +808,6 @@ fn step(
 
     let mut relationships: SSARelationships = Vec::new();
     for r in rels {
-        debug!("Stepping Relationship: {:?}", r);
         let lhs_ssa = convert_expr(&mut new_ssa, &r.lhs, global_sub);
         let rhs_ssa = convert_expr(&mut new_ssa, &r.rhs, global_sub);
         relationships.push(rel!(lhs_ssa, r.relationship, rhs_ssa));
@@ -875,10 +862,6 @@ fn convert_expr(
             Some(v) => GenericExpr::Var(v),
             None => {
                 assert!(v.is_memory()); // only memory may not be found in SSAState
-                warn!(
-                    "Variable(memory) {:?} not found in current SSA, adding it to the SSA",
-                    v
-                );
                 let sub = global_sub.lock().unwrap().take_sub();
                 ssa.map.insert(ssa.convert_to_ss(v), sub);
                 let mem_loc_ss = Sub {
