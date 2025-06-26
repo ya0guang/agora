@@ -35,7 +35,7 @@ def touch(path):
 def gen_proof(basepath: pathlib.Path, binary: pathlib.Path, proof: pathlib.Path, log: pathlib.Path, time_cost: pathlib.Path):
     print(f'[*] Generating proof for [{binary}]...')
     touch('log.prf')
-    veriwasm = basepath / 'target/debug/veriwasm'
+    veriwasm = basepath / 'target/release/veriwasm'
     postprocess = basepath / 'assertion_generators/wasm_sfi/postprocess.py'
     # ret = os.system(f'{veriwasm} --disable-call-checks -i {binary} &> {log}')
     if log is not None:
@@ -58,7 +58,7 @@ def gen_proof(basepath: pathlib.Path, binary: pathlib.Path, proof: pathlib.Path,
 
 def gen_disasm(basepath: pathlib.Path, binary: pathlib.Path, disasm: pathlib.Path):
     print(f'[*] Generating disassembly json for [{binary}]...')
-    disasm_exe = basepath / 'target/debug/disasm'
+    disasm_exe = basepath / 'target/release/disasm'
     # ret = os.system(f'{disasm_exe} {binary} {disasm}')
     ret = subprocess.call([disasm_exe, binary, disasm])
     if ret != 0:
@@ -79,7 +79,7 @@ def run_checker(
         solverless: bool,
         ):
     print(f'[*] Executing the proof checker for [{binary}]...')
-    checker = basepath / 'target/debug/checker'
+    checker = basepath / 'target/release/checker'
     opts = ["-a", "lucet_probestack"]
     if solverless:
         opts.append('--solverless')

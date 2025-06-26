@@ -711,7 +711,7 @@ pub fn solve_function(
     // println!("relationships assumed");
 
     // Resolve constraints
-    #[cfg(not(debug_assertions))]
+    #[cfg(debug_assertions)]
     let mut temp_assertions: Vec<GenericExpr<Sub<GenericLocation<Sub<Register>>>>> = vec![];
     for (addr, ins_cons) in func_constraints {
         solver_ctx.debug_info(&format!("Solver asserting on addr 0x{:x}", addr))?;
@@ -732,7 +732,7 @@ pub fn solve_function(
         if ins_cons.assertions.is_empty() {
             continue;
         } else {
-            #[cfg(not(debug_assertions))]
+            #[cfg(debug_assertions)]
             {
                 let ins_asserts: Vec<_> = ins_cons
                     .assertions
@@ -751,7 +751,7 @@ pub fn solve_function(
     // println!("all constraints added to temp_assertions");
     // #[cfg(not(debug_assertions))]
     // println!("length of the assertions: {}", temp_assertions.len());
-    #[cfg(not(debug_assertions))]
+    #[cfg(debug_assertions)]
     {
         let unified_all_asserts = unify_ssexprs(&temp_assertions, boolean!("and"));
         if !solver_ctx.sandboxed_batch_check(

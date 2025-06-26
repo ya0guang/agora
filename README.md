@@ -37,10 +37,20 @@ python3 ./test_smart_contract.py
 
 ### Reproducing the Verification Results
 
-1. Place the compiled SPEC 2006 binaries under `resources/`
-2. Run the script `./test_verify_sfi_all.sh`
+**Note: due to copyright concern, SPEC 2006 benchmark (even the binary format) cannot be included in this repository. Please purchase the software.** Then place the compiled SPEC 2006 binaries under `resources/`.
 
-The verification should pass.
+#### SFI Policy Verification
+
+##### Verifiability
+
+- [Not recommanded] Run the script `./test_verify_sfi_all.sh` to reproduce the verification results for all SPEC 2006 benchmarks tested by us. This could take a long time to finish, so we would advice running several of the SPEC 2006 benchmarks instead.
+  - **Note**: several functions may fail to verify due to the minor difference of the toolchains and too restrictive policies. The expected number of failed functions is below 5.
+  - The verification results will be directly printed to the console.
+
+##### Reproducing Fig. 7 (Partial)
+
+#### LVI Policy Verification
+
 
 ### Reproducing the Smart Contract Results
 
