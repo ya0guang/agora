@@ -49,7 +49,12 @@ python3 ./test_smart_contract.py
 
 ##### Reproducing Fig. 7 (Partial)
 
-#### LVI Policy Verification
+#### Try the LVI Policy Verification
+
+```sh
+# Generate the proof file
+cargo run --bin lfence  -- resources/fence/brloop
+```
 
 
 ### Reproducing the Smart Contract Results
