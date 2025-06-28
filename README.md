@@ -1,7 +1,7 @@
 
 - [Agora Verifier](#agora-verifier)
   - [Getting Started](#getting-started)
-    - [Requirments](#requirments)
+    - [Requirements](#requirements)
     - [Build the Docker Image](#build-the-docker-image)
     - [Fast Trail](#fast-trail)
   - [Step-by-Step Guide](#step-by-step-guide)
@@ -19,13 +19,11 @@
     - [Reproducing the Smart Contract Results](#reproducing-the-smart-contract-results)
     - [Reproducing the TCB Size Calculation](#reproducing-the-tcb-size-calculation)
 
-
-
 # Agora Verifier
 
 ## Getting Started
 
-### Requirments
+### Requirements
 
 - Linux environment
 - Docker, see [Docker Installation](https://docs.docker.com/get-docker/)
@@ -68,7 +66,7 @@ python3 ./test_smart_contract.py
 
 ##### Verifiability
 
-- [Not recommanded] Run the script `./test_verify_sfi_all.sh` to reproduce the verification results for all SPEC 2006 benchmarks tested by us. This could take a long time to finish, so we would advice running several of the SPEC 2006 benchmarks instead.
+- [Not recommended] Run the script `./test_verify_sfi_all.sh` to reproduce the verification results for all SPEC 2006 benchmarks tested by us. This could take a long time to finish, so we would advice running several of the SPEC 2006 benchmarks instead.
   - **Note**: several functions may fail to verify due to the minor difference of the toolchains and too restrictive policies. The expected number of failed functions is below 5.
   - The verification results will be directly printed to the console.
 
@@ -77,7 +75,6 @@ python3 ./test_smart_contract.py
 This requires manually generating the proof (i.e., assertions), generating the constraints in SMT2 format, and then running the SMT solver to check the satisfiability of the constraints.
 
 We use `libquantum_O0` as an example to demonstrate the the entire workflow. Again, the binary file should be placed under `resources/spec2006/`.
-
 
 ###### Generate the proof file
 
@@ -203,4 +200,20 @@ Please check the [readme file under `contracts` directory](./contracts/README.md
 
 Please switch to the branch `tcbsize` for counting the TCB size. This version remove all unnecessary debug outputs and tests, and only keeps the necessary files for counting the TCB size.
 
-You will find more details in the readme file under `tcbsize` branch.
+```bash
+git switch tcbsize
+```
+
+Run `tokei` to count lines of code. These components correspond to the TCB size report in the paper (Table 1). There are some minor differences in some numbers, such as the total count of BV or the line count of IFC-ConfVERIFY, due to recent updates. The overall numbers are still very close to the original table in the paper.
+
+```bash
+tokei FILE_NAME
+```
+
+| Table 1 Items          | Counted Files                                       | LoC Sum                             |
+| ---------------------- | --------------------------------------------------- | ----------------------------------- |
+| General Utilities      | `ir/`,  `checker/[semantics, ssa, dis, policy/mod]` | 1820 + 507 + 692 + 415 + 241 = 3675 |
+| Binary Verifier        | `checker/[validate, solve, main]`                   | 188 + 468 + 123 = 779               |
+| Policy: SFI-VeriWASM   | `checker/policy/wasmsfi`                            | 623                                 |
+| Policy: LVI            | `checker/policy/lvi`                                | 77                                  |
+| Policy: IFC-ConfVERIFY | `checker/policy/ifc`                                | 324                                 |
