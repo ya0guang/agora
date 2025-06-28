@@ -2,7 +2,7 @@
 
 ## Getting Started
 
-### Requirments
+### Requirements
 
 - Linux environment
 - Docker, see [Docker Installation](https://docs.docker.com/get-docker/)
@@ -38,7 +38,7 @@ python3 ./test_smart_contract.py
 Run `tokei` to count lines of code. These components correspond to the TCB size report in the paper (Table 1). There are some minor differences in some numbers, such as the total count of BV or the line count of IFC-ConfVERIFY, due to recent updates. The overall numbers are still very close to the original table in the paper.
 
 ```bash
-tokei
+tokei FILE_NAME
 ```
 
 | Table 1 Items          | Counted Files                                       | LoC Sum                             |
@@ -47,4 +47,4 @@ tokei
 | Binary Verifier        | `checker/[validate, solve, main]`                   | 188 + 468 + 123 = 779               |
 | Policy: SFI-VeriWASM   | `checker/policy/wasmsfi`                            | 623                                 |
 | Policy: LVI            | `checker/policy/lvi`                                | 77                                  |
-| Policy: IFC-ConfVERIFY |                                                     | 324                                 |
+| Policy: IFC-ConfVERIFY | `checker/policy/ifc`                                | 324                                 |
