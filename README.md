@@ -1,3 +1,24 @@
+
+- [Agora Verifier](#agora-verifier)
+  - [Getting Started](#getting-started)
+    - [Requirments](#requirments)
+    - [Build the Docker Image](#build-the-docker-image)
+    - [Fast Trail](#fast-trail)
+  - [Step-by-Step Guide](#step-by-step-guide)
+    - [Dependencies](#dependencies)
+    - [Reproducing the Verification Results](#reproducing-the-verification-results)
+      - [SFI Policy Verification](#sfi-policy-verification)
+        - [Verifiability](#verifiability)
+        - [Reproducing Fig. 7 (Partial)](#reproducing-fig-7-partial)
+          - [Generate the proof file](#generate-the-proof-file)
+          - [Run Agora Verifier with Elapsed Time Recording](#run-agora-verifier-with-elapsed-time-recording)
+          - [Run Agora Verifier and Calculate the SMT2 Constraints Size](#run-agora-verifier-and-calculate-the-smt2-constraints-size)
+      - [IFC Policy Verification](#ifc-policy-verification)
+        - [Introduction](#introduction)
+        - [Results](#results)
+    - [Reproducing the Smart Contract Results](#reproducing-the-smart-contract-results)
+    - [Reproducing the TCB Size Calculation](#reproducing-the-tcb-size-calculation)
+
 # Agora Verifier
 
 ## Getting Started
@@ -34,6 +55,8 @@ python3 ./test_smart_contract.py
 - `cvc4`, as a sample solver
 - SPEC 2006 benchmark suite
   - purchase & download from [SPEC 2006](https://www.spec.org/cpu2006/)
+
+---
 
 ### Reproducing the Verification Results
 
@@ -109,6 +132,66 @@ find . -name '*.smt2' -type f -exec grep -hv '^\s*;' {} + | wc -l
 ```
 
 We observe a roughly 80% reduction in the size of the SMT2 constraints when using the optimized version of the Agora Verifier.
+
+---
+
+#### IFC Policy Verification
+
+##### Introduction
+
+For IFC policy verification, we have provided a script `verify_ifc.sh` to verify the IFC policies on several test files. The script will run the Agora Verifier with the IFC policy checker and generate the proof files. To avoid prolonged compilation time of the toolchain ConfLLVM, which requires compilation of the full LLVM framework, we have precompiled the binaries for the test files.
+
+*Before running the script, please switch to the `ifc` branch of the repository.*
+
+```bash
+# Switch to the ifc branch
+git switch ifc
+
+# Run the script in the root directory to verify the IFC policies
+./verify_ifc.sh
+
+# Once you are done, you can switch back to the main branch
+git switch main
+```
+
+##### Results
+
+The script will verify the IFC policies on the following files:
+
+- `resources/ifc/nginx/nginx.o`
+- `resources/ifc/unit_test/test.o`
+- `resources/ifc/unit_test/bad1.o`
+- `resources/ifc/unit_test/bad2.o`
+
+We keep the script simple and only print the verification results to the console. The output will look like below for nginx.o and test.o:
+
+```bash
+Running IFC policy checker on resources/ifc/nginx/nginx.o...
+...
+✔️  Function ngx_core_module_create_conf is tentatively verified ✔️
+✔️  Function main is tentatively verified ✔️
+✔️  Function ngx_exec_new_binary is tentatively verified ✔️
+✔️  Function ngx_core_module_init_conf is tentatively verified ✔️
+...
+```
+
+Whereas for the bad files, the output will look like below:
+
+```bash
+Running IFC policy checker on resources/ifc/unit_test/bad1.o...
+❌  Error in verification of func matrix_multiply: guard: expect sat, but unsat ❌
+
+Running IFC policy checker on resources/ifc/unit_test/bad2.o...
+❌  Error in verification of func process_data: All assertion check: assertion failed ❌
+```
+
+As can be seen from the output, the Agora Verifier can successfully verify the IFC policies on the binaries compiled from ConfLLVM, and can also detect the violations of the IFC policies on the bad files.
+
+The script will also show the differences between the test.o and bad1.o/bad2.o files, where we modify only one bit in the binary to violate the IFC policy. Specifically, for `bad1.o`, we modify the byte 0x5A8 from 0x03 to 0x13 to alter the magic sequence of the `matrix_multiply` function. For `bad2.o`, we modify the byte 0x56C in `process_data` function from 0x65 to 0x64. This changes the write destination of a secret source, making it write to the public memory segment instead of the secret memory segment.
+
+Both of these modifications will cause the IFC policy checker to fail, as they violate the IFC policies defined in the ConfLLVM. You can refer to the assembly code `test.asm` for reference. The relative locations of the alternations are: 0x568 for `bad1.o` and 0x52c for `bad2.o`.
+
+---
 
 ### Reproducing the Smart Contract Results
 
