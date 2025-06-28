@@ -35,16 +35,16 @@ python3 ./test_smart_contract.py
 
 ### Reproducing the TCB Size Report
 
-Run `tokei` to count lines of code. These components correspond to the TCB size report in the paper (Table 1).
+Run `tokei` to count lines of code. These components correspond to the TCB size report in the paper (Table 1). There are some minor differences in some numbers, such as the total count of BV or the line count of IFC-ConfVERIFY, due to recent updates. The overall numbers are still very close to the original table in the paper.
 
 ```bash
 tokei
 ```
-| Table 1 Items          | Counted Files                                       | LoC Sum                      |
-| ---------------------- | --------------------------------------------------- | ---------------------------- |
-| General Utilities      | `ir/`,  `checker/[semantics, ssa, dis, policy/mod]` | 1.8 + 0.5 + 0.7 + 0.4 + 0.24 |
-| Binary Verifier        | `checker/[validate, solve, main, ]`                 | 188 + 468 + 123              |
-| Policy: SFI-VeriWASM   | `checker/policy/wasmsfi`                            | 0.5                          |
-| Policy: LVI            | `checker/policy/lvi`                                | 0.5                          |
-| Policy: IFC-ConfVERIFY |                                                     |                              |
-| Policy: SFI-Deflection |                                                     |                              |
+
+| Table 1 Items          | Counted Files                                       | LoC Sum                             |
+| ---------------------- | --------------------------------------------------- | ----------------------------------- |
+| General Utilities      | `ir/`,  `checker/[semantics, ssa, dis, policy/mod]` | 1820 + 507 + 692 + 415 + 241 = 3675 |
+| Binary Verifier        | `checker/[validate, solve, main]`                   | 188 + 468 + 123 = 779               |
+| Policy: SFI-VeriWASM   | `checker/policy/wasmsfi`                            | 623                                 |
+| Policy: LVI            | `checker/policy/lvi`                                | 77                                  |
+| Policy: IFC-ConfVERIFY |                                                     | 324                                 |
