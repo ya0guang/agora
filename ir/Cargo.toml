@@ -1,0 +1,17 @@
+[package]
+name = "ir"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+stack_func = []
+
+[dependencies]
+anyhow = "1.0"
+thiserror = "1.0"
+# iced-asm = {path = "../iced-asm"}
+iced-asm = {version = "1.18.0", features = ["serde"], package = "iced-x86"}
+log = "0.4"
+rsmt2 = "0.16.0"

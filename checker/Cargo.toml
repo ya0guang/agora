@@ -1,0 +1,37 @@
+[package]
+name = "checker"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = [] # optimized
+# wasmsfi = []
+# naive_memory = []
+mem_unhint = [] # global opt only
+stack_func = ["ir/stack_func"] # if we use UFBV
+global = [] # mem hint only
+pushback = []
+baseline = ["mem_unhint", "global", "default"] # baseline
+
+
+[dependencies]
+log = "0.4"
+lazy_static = "1.4.0"
+env_logger = "0.9"
+object = "0.29"
+# iced-asm =  {features = ["serde"], path = "../iced-asm" }
+serde = "1.0"
+serde_json = "1.0"
+iced-asm = {version = "1.18.0", package = "iced-x86"}
+# disasm =  {path = "../disasm" }
+anyhow = "1.0"
+parser = { path = "../parser" }
+ir = { path = "../ir" }
+clap = { version = "3.2.22", features = ["derive"] }
+petgraph = {git = "https://github.com/ya0guang/petgraph-minimal"}
+rsmt2 = "0.16.0"
+emojis = "0.6.0"
+threadpool = "1.8"
+itertools = "0.13.0"

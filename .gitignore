@@ -1,0 +1,35 @@
+.vscode/
+
+# direnv
+.envrc
+
+solve.smt2
+
+# Coq
+*.vo
+*.vok
+*.vos
+*.glob
+.*.aux
+
+# Rust
+target/
+Cargo.lock
+
+# bap_test
+bap_test/
+resources/bin/
+
+# Resources
+# force add these files when necessary
+*.prf
+*.log
+*.json
+*.wat
+
+# Tests
+*.smt2
+*.s
+
+eval/*
+!eval/run_workflow.py

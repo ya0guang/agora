@@ -1,0 +1,7 @@
+{
+    "provider": "https://sepolia.infura.io/v3/df06acebf3db497aa87c4d9ffb0ee6d9",
+    "PROJECT_ID": "2JHmFBDrTrig2RrdeeBXwKNm45K",
+    "PROJECT_SECRET": "fff3e7a0d8981fe90be2ad721c55a230",
+    "ENDPOIN": "https://ipfs.infura.io:5001",
+    "browser": "https://sepolia.etherscan.io/"
+}

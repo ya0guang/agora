@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "ir",
+    "parser",
+    "checker",
+    "disasm",
+    "iced-asm",
+    "assertion_generator/confllvm",
+]
+
+[patch.crates-io]

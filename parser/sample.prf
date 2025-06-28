@@ -1,0 +1,14 @@
+0x1073: r15 := bvadd r14 r15
+0x1074: bvuge r15 bvadd r14 r15
+0x1075: r15 := bvadd r14 rax
+0x1076: ZF := = r15d r14d
+0x1074: distinct bvsub esp 0x00000008 bvadd r14d r15d
+0x1075: INV = r15 0x0000100000001000
+0x1076: BRANCH .labelBB0 bvugt rsp rbp
+0x1077: q[rip] := r15
+0x1078: q[r15 + 0x0100] := bvadd r14 r15
+0x1079: q[0x0100] := bvadd r14 r15
+0x107a: q[(rax * 4) + 0x0100] := bvadd r14 r15
+0x107a: q[rsp + (rbp * 8) + 0xae] := q[rip + 0xea]
+0x107b: rax := ITE distinct r14 r15 bvadd r14 r15 bvsub r14 r15
+0x107c: r15 := (zero_extend 32) r14d

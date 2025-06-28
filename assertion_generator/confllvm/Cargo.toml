@@ -1,0 +1,29 @@
+[package]
+name = "confverify"
+version = "0.1.0"
+authors = ["isolachine <qfz5074@psu.edu>"]
+edition = "2021"
+license-file = "LICENSE"
+readme = "README.md"
+repository = "https://github.com/psuplus/confverify"
+description = "A verifier for ConfLLVM compiled binaries"
+keywords = ["verification", "security", "static-analysis", "binary-analysis", "information-flow"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+iced-asm = {version = "1.21.0", package = "iced-x86"}
+parser = { path = "../../parser" }
+ptir = { package = "ir", path = "../../ir" }
+semantics = { package = "checker", path = "../../checker" }
+clap = { version = "3.2.22", features = ["derive"] }
+object = "0.31.0"
+disasm =  {path = "../../disasm" }
+anyhow = "1.0"
+env_logger = "0.9"
+log = "0.4"
+lazy_static = "1.4.0"
+petgraph = "0.6"
+
+[features]
+
