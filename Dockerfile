@@ -29,6 +29,6 @@ RUN git clone https://github.com/ya0guang/agora.git . && \
 # Optional: Build the release version of your application.
 # This step compiles your Rust code into an executable.
 # The binary will be located in /app/target/release/your_rust_binary_name (replace with your actual binary name).
-RUN cargo build
+RUN cargo build --release
 
 CMD ["bash"]
