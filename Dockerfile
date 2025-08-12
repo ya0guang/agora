@@ -5,7 +5,7 @@ FROM rust:latest
 
 # Install Git to clone your repository.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git cvc4 python3-pip python3-venv curl && \
+    apt-get install -y --no-install-recommends git cvc4 python3-pip python3-venv curl gawk && \
     rm -rf /var/lib/apt/lists/*
 
 # Create a virtual environment for Python
@@ -23,8 +23,9 @@ WORKDIR /agora
 # For example: https://github.com/rust-lang/rust-by-example.git
 # If your repo is private, you'll need to handle authentication (see note below).
 
-RUN git clone https://github.com/ya0guang/agora.git . && \
-    rm -rf ./.git # Remove .git directory to prevent credential leaks after clone
+RUN git clone https://github.com/ya0guang/agora.git . 
+# && \
+#    rm -rf ./.git # Remove .git directory to prevent credential leaks after clone
 
 # Optional: Build the release version of your application.
 # This step compiles your Rust code into an executable.
